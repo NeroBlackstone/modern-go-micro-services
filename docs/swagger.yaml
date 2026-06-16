@@ -1,0 +1,785 @@
+basePath: /
+definitions:
+  model.Book:
+    properties:
+      author:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      price:
+        type: number
+      stock:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  model.CreateBookRequest:
+    properties:
+      author:
+        maxLength: 100
+        type: string
+      description:
+        maxLength: 2000
+        type: string
+      price:
+        type: number
+      stock:
+        minimum: 0
+        type: integer
+      title:
+        maxLength: 200
+        type: string
+    required:
+    - author
+    - price
+    - stock
+    - title
+    type: object
+  model.CreateOrderRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.OrderItemRequest'
+        minItems: 1
+        type: array
+    required:
+    - items
+    type: object
+  model.CreateReviewRequest:
+    properties:
+      book_id:
+        type: integer
+      comment:
+        maxLength: 2000
+        type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - book_id
+    - rating
+    type: object
+  model.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  model.LoginResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/model.UserResponse'
+    type: object
+  model.Order:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/model.OrderItem'
+        type: array
+      status:
+        $ref: '#/definitions/model.OrderStatus'
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  model.OrderItem:
+    properties:
+      book_id:
+        type: integer
+      book_title:
+        description: 冗余存储，防止图书信息变更
+        type: string
+      id:
+        type: integer
+      order_id:
+        type: integer
+      price:
+        description: 下单时的价格
+        type: number
+      quantity:
+        type: integer
+    type: object
+  model.OrderItemRequest:
+    properties:
+      book_id:
+        type: integer
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - book_id
+    - quantity
+    type: object
+  model.OrderStatus:
+    enum:
+    - pending
+    - paid
+    - shipped
+    - completed
+    - cancelled
+    type: string
+    x-enum-comments:
+      OrderStatusCancelled: 已取消
+      OrderStatusCompleted: 已完成
+      OrderStatusPaid: 已支付
+      OrderStatusPending: 待支付
+      OrderStatusShipped: 已发货
+    x-enum-descriptions:
+    - 待支付
+    - 已支付
+    - 已发货
+    - 已完成
+    - 已取消
+    x-enum-varnames:
+    - OrderStatusPending
+    - OrderStatusPaid
+    - OrderStatusShipped
+    - OrderStatusCompleted
+    - OrderStatusCancelled
+  model.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        maxLength: 50
+        minLength: 6
+        type: string
+      username:
+        maxLength: 50
+        minLength: 2
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  model.Review:
+    properties:
+      book_id:
+        type: integer
+      comment:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      rating:
+        description: 1-5
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  model.ReviewStats:
+    properties:
+      average_rating:
+        type: number
+      rating_1_count:
+        type: integer
+      rating_2_count:
+        type: integer
+      rating_3_count:
+        type: integer
+      rating_4_count:
+        type: integer
+      rating_5_count:
+        type: integer
+      total_reviews:
+        type: integer
+    type: object
+  model.UpdateBookRequest:
+    properties:
+      author:
+        maxLength: 100
+        type: string
+      description:
+        maxLength: 2000
+        type: string
+      price:
+        type: number
+      stock:
+        minimum: 0
+        type: integer
+      title:
+        maxLength: 200
+        type: string
+    type: object
+  model.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      username:
+        maxLength: 50
+        minLength: 2
+        type: string
+    type: object
+  model.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
+  response.PageResult:
+    properties:
+      list: {}
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  response.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@bookstore.com
+    name: API Support
+  description: 在线书店微服务单体应用 API 文档
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: 在线书店 API
+  version: "1.0"
+paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 用户通过邮箱和密码登录获取Token
+      parameters:
+      - description: 登录请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.LoginResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 用户登录
+      tags:
+      - 用户模块
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: 用户通过邮箱和密码注册新账号
+      parameters:
+      - description: 注册请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.LoginResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 用户注册
+      tags:
+      - 用户模块
+  /api/v1/books:
+    get:
+      description: 获取图书列表，支持分页和搜索
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - description: 搜索关键词（标题或作者）
+        in: query
+        name: keyword
+        type: string
+      - description: 按作者筛选
+        in: query
+        name: author
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PageResult'
+              type: object
+      summary: 图书列表
+      tags:
+      - 图书模块
+    post:
+      consumes:
+      - application/json
+      description: 创建一本新图书（管理员接口）
+      parameters:
+      - description: 创建图书请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateBookRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Book'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 创建图书
+      tags:
+      - 图书模块
+  /api/v1/books/{id}:
+    delete:
+      description: 根据ID删除图书（管理员接口）
+      parameters:
+      - description: 图书ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除图书
+      tags:
+      - 图书模块
+    get:
+      description: 根据ID获取图书详细信息
+      parameters:
+      - description: 图书ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Book'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 获取图书详情
+      tags:
+      - 图书模块
+    put:
+      consumes:
+      - application/json
+      description: 更新图书信息（管理员接口）
+      parameters:
+      - description: 图书ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新图书请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateBookRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Book'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新图书
+      tags:
+      - 图书模块
+  /api/v1/orders:
+    get:
+      description: 获取当前用户的订单列表
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - description: 订单状态筛选
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PageResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 订单列表
+      tags:
+      - 订单模块
+    post:
+      consumes:
+      - application/json
+      description: 用户提交订单，系统验证库存并扣减
+      parameters:
+      - description: 创建订单请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Order'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 创建订单
+      tags:
+      - 订单模块
+  /api/v1/orders/{id}:
+    get:
+      description: 根据ID获取订单详情
+      parameters:
+      - description: 订单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Order'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取订单详情
+      tags:
+      - 订单模块
+  /api/v1/orders/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: 更新订单状态（如支付、发货等）
+      parameters:
+      - description: 订单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 状态更新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新订单状态
+      tags:
+      - 订单模块
+  /api/v1/reviews:
+    post:
+      consumes:
+      - application/json
+      description: 用户对已购买的图书发表评价
+      parameters:
+      - description: 创建评价请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Review'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 发表评价
+      tags:
+      - 评价模块
+  /api/v1/reviews/book/{book_id}:
+    get:
+      description: 获取指定图书的评价列表
+      parameters:
+      - description: 图书ID
+        in: path
+        name: book_id
+        required: true
+        type: integer
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PageResult'
+              type: object
+      summary: 查看图书评价列表
+      tags:
+      - 评价模块
+  /api/v1/reviews/book/{book_id}/stats:
+    get:
+      description: 获取指定图书的评分统计信息
+      parameters:
+      - description: 图书ID
+        in: path
+        name: book_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ReviewStats'
+              type: object
+      summary: 获取图书评价统计
+      tags:
+      - 评价模块
+  /api/v1/user/profile:
+    get:
+      description: 获取当前登录用户的个人信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取用户信息
+      tags:
+      - 用户模块
+    put:
+      consumes:
+      - application/json
+      description: 更新当前登录用户的个人信息
+      parameters:
+      - description: 更新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新用户信息
+      tags:
+      - 用户模块
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

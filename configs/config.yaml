@@ -1,0 +1,20 @@
+server:
+  port: 8080
+  mode: debug  # debug, release, test
+
+database:
+  host: localhost
+  port: 5432
+  user: bookstore
+  password: bookstore123
+  dbname: bookstore_db
+  sslmode: disable
+  max_idle_conns: 10
+  max_open_conns: 100
+
+jwt:
+  secret: your-secret-key-change-in-production
+  expire_hours: 72
+
+log:
+  level: info  # debug, info, warn, error
