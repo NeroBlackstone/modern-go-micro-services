@@ -1,7 +1,7 @@
 services:
   # PostgreSQL 数据库
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: bookstore-postgres
     environment:
       POSTGRES_USER: bookstore
@@ -17,6 +17,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis 缓存
+  redis:
+    image: redis:8-alpine
+    container_name: bookstore-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Go 应用
   app:
     build: .
@@ -28,6 +42,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:

@@ -9,6 +9,7 @@ import (
 	"modern-micro-services/internal/model"
 	"modern-micro-services/internal/repository"
 	"modern-micro-services/internal/service"
+	redispkg "modern-micro-services/pkg/redis"
 
 	_ "modern-micro-services/docs" // Swagger docs
 
@@ -68,9 +69,16 @@ func main() {
 	}
 	logger.Info("database migration completed")
 
+	// 初始化Redis
+	redisClient, err := redispkg.NewClient(&cfg.Redis, logger)
+	if err != nil {
+		logger.Fatal("failed to connect to redis", zap.Error(err))
+	}
+	defer redisClient.Close()
+
 	// 初始化各层
 	userRepo := repository.NewUserRepository(db)
-	bookRepo := repository.NewBookRepository(db)
+	bookRepo := repository.NewCachedBookRepository(db, redisClient, logger) // 使用带缓存的图书仓库
 	orderRepo := repository.NewOrderRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 
