@@ -33,6 +33,15 @@ func NewBookClient(addr string, logger *zap.Logger) (*BookClient, error) {
 	}, nil
 }
 
+// NewBookClientFromConn 使用已有的 gRPC 连接创建 BookClient
+func NewBookClientFromConn(conn *grpc.ClientConn, logger *zap.Logger) *BookClient {
+	return &BookClient{
+		conn:   conn,
+		client: bookv1.NewBookServiceClient(conn),
+		logger: logger,
+	}
+}
+
 // GetBook 获取图书信息
 func (c *BookClient) GetBook(bookID uint) (*bookv1.GetBookResponse, error) {
 	resp, err := c.client.GetBook(context.Background(), &bookv1.GetBookRequest{

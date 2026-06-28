@@ -25,6 +25,5 @@ jwt:
 log:
   level: info
 
-grpc:
-  user_service_addr: user-service:9091
-  book_service_addr: book-service:9092
+consul:
+  addr: consul:8500

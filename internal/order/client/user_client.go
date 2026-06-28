@@ -33,6 +33,15 @@ func NewUserClient(addr string, logger *zap.Logger) (*UserClient, error) {
 	}, nil
 }
 
+// NewUserClientFromConn 使用已有的 gRPC 连接创建 UserClient
+func NewUserClientFromConn(conn *grpc.ClientConn, logger *zap.Logger) *UserClient {
+	return &UserClient{
+		conn:   conn,
+		client: userv1.NewUserServiceClient(conn),
+		logger: logger,
+	}
+}
+
 func (c *UserClient) GetUser(userID uint) (*userv1.GetUserResponse, error) {
 	resp, err := c.client.GetUser(context.Background(), &userv1.GetUserRequest{
 		UserId: uint32(userID),

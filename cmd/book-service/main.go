@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"modern-micro-services/internal/book/config"
 	"modern-micro-services/internal/book/handler"
@@ -13,6 +15,7 @@ import (
 	"modern-micro-services/internal/book/server"
 	"modern-micro-services/internal/book/service"
 	redispkg "modern-micro-services/internal/book/redis"
+	"modern-micro-services/internal/discovery"
 
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
@@ -64,10 +67,35 @@ func main() {
 		}
 	}()
 
+	// 注册到 Consul
+	registry, err := discovery.NewRegistry(cfg.Consul.Addr, logger)
+	if err != nil {
+		logger.Fatal("failed to create consul registry", zap.Error(err))
+	}
+
+	// 获取本机 IP（在 Docker 中使用容器名）
+	hostname, _ := os.Hostname()
+	err = registry.Register(&discovery.ServiceRegistration{
+		ServiceName: "book-service",
+		Address:     hostname,
+		Port:        cfg.Server.GRPCPort,
+		Tags:        []string{"grpc", "book"},
+		Meta: map[string]string{
+			"gRPC_port": fmt.Sprintf("%d", cfg.Server.GRPCPort),
+		},
+	}, 10*time.Second)
+	if err != nil {
+		logger.Fatal("failed to register to consul", zap.Error(err))
+	}
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	logger.Info("shutting down book-service...")
+
+	// 注销服务
+	registry.Deregister(fmt.Sprintf("book-service-%s-%d", hostname, cfg.Server.GRPCPort))
+
 	grpcServer.Stop()
 }

@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"modern-micro-services/internal/discovery"
 	"modern-micro-services/internal/user/config"
 	"modern-micro-services/internal/user/handler"
 	"modern-micro-services/internal/user/model"
@@ -70,6 +72,27 @@ func main() {
 		}
 	}()
 
+	// 注册到 Consul
+	registry, err := discovery.NewRegistry(cfg.Consul.Addr, logger)
+	if err != nil {
+		logger.Fatal("failed to create consul registry", zap.Error(err))
+	}
+
+	// 获取本机 IP（在 Docker 中使用容器名）
+	hostname, _ := os.Hostname()
+	err = registry.Register(&discovery.ServiceRegistration{
+		ServiceName: "user-service",
+		Address:     hostname,
+		Port:        cfg.Server.GRPCPort,
+		Tags:        []string{"grpc", "user"},
+		Meta: map[string]string{
+			"gRPC_port": fmt.Sprintf("%d", cfg.Server.GRPCPort),
+		},
+	}, 10*time.Second)
+	if err != nil {
+		logger.Fatal("failed to register to consul", zap.Error(err))
+	}
+
 	// 启动 HTTP server (register, login, profile)
 	gin.SetMode(cfg.Server.Mode)
 	r := gin.New()
@@ -106,5 +129,9 @@ func main() {
 
 	<-quit
 	logger.Info("shutting down user-service...")
+
+	// 注销服务
+	registry.Deregister(fmt.Sprintf("user-service-%s-%d", hostname, cfg.Server.GRPCPort))
+
 	grpcServer.Stop()
 }

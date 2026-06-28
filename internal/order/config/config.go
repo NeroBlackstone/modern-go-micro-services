@@ -12,7 +12,7 @@ type Config struct {
 	RabbitMQ RabbitMQConfig `mapstructure:"rabbitmq"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Log      LogConfig      `mapstructure:"log"`
-	GRPC     GRPCConfig     `mapstructure:"grpc"`
+	Consul   ConsulConfig   `mapstructure:"consul"`
 }
 
 type ServerConfig struct {
@@ -47,9 +47,8 @@ type LogConfig struct {
 	Level string `mapstructure:"level"`
 }
 
-type GRPCConfig struct {
-	UserServiceAddr string `mapstructure:"user_service_addr"`
-	BookServiceAddr string `mapstructure:"book_service_addr"`
+type ConsulConfig struct {
+	Addr string `mapstructure:"addr"`
 }
 
 func (r *RabbitMQConfig) AmqpURL() string {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"modern-micro-services/internal/discovery"
 	"modern-micro-services/internal/order/client"
 	"modern-micro-services/internal/order/config"
 	"modern-micro-services/internal/order/handler"
@@ -14,6 +15,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/resolver"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -61,20 +65,40 @@ func main() {
 	}
 	defer producer.Close()
 
-	// 初始化 gRPC clients
-	bookClient, err := client.NewBookClient(cfg.GRPC.BookServiceAddr, logger)
+	// 初始化 Consul 服务发现
+	registry, err := discovery.NewRegistry(cfg.Consul.Addr, logger)
 	if err != nil {
-		logger.Fatal("failed to connect to book-service", zap.Error(err))
+		logger.Fatal("failed to create consul registry", zap.Error(err))
 	}
-	defer bookClient.Close()
 
-	userClient, err := client.NewUserClient(cfg.GRPC.UserServiceAddr, logger)
+	// 创建 Consul resolver builder
+	consulBuilder := discovery.NewConsulResolverBuilder(registry, logger)
+
+	// 注册自定义 resolver 到 gRPC
+	resolver.Register(consulBuilder)
+
+	// 初始化 gRPC clients，使用 consul:/// 服务名 进行服务发现
+	// gRPC 会自动使用我们的 Consul resolver 解析地址
+	bookConn, err := grpc.NewClient(
+		"consul:///book-service",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(discovery.ServiceConfigJSON()),
+	)
 	if err != nil {
-		logger.Warn("failed to connect to user-service (non-critical)", zap.Error(err))
-		// user-service 不影响核心下单流程，降级处理
+		logger.Fatal("failed to connect to book-service via consul", zap.Error(err))
 	}
-	if userClient != nil {
-		defer userClient.Close()
+	bookClient := client.NewBookClientFromConn(bookConn, logger)
+
+	userConn, err := grpc.NewClient(
+		"consul:///user-service",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(discovery.ServiceConfigJSON()),
+	)
+	if err != nil {
+		logger.Warn("failed to connect to user-service via consul (non-critical)", zap.Error(err))
+	}
+	if userConn != nil {
+		defer userConn.Close()
 	}
 
 	// 初始化各层
