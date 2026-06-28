@@ -1,6 +1,7 @@
 # Binaries
 /server
 /consumer
+/book-service
 /bin/
 *.exe
 *.exe~
