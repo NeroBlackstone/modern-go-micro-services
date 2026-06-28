@@ -1,0 +1,21 @@
+edition = "2024";
+
+package bookstore.user.v1;
+
+option go_package = "modern-micro-services/gen/bookstore/user/v1;userv1";
+
+// UserService 用户服务 —— 供其他微服务内部调用
+service UserService {
+  // GetUser 根据用户 ID 获取用户基本信息
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+message GetUserRequest {
+  uint32 user_id = 1;
+}
+
+message GetUserResponse {
+  uint32 id = 1;
+  string username = 2;
+  string email = 3;
+}

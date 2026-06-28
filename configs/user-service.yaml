@@ -1,0 +1,21 @@
+server:
+  grpc_port: 9091
+  http_port: 8081
+  mode: debug
+
+database:
+  host: postgres-user
+  port: 5432
+  user: bookstore
+  password: bookstore123
+  dbname: user_db
+  sslmode: disable
+  max_idle_conns: 10
+  max_open_conns: 100
+
+jwt:
+  secret: your-secret-key-change-in-production
+  expire_hours: 72
+
+log:
+  level: info

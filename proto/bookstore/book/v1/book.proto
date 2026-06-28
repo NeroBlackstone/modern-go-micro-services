@@ -1,0 +1,61 @@
+edition = "2024";
+
+package bookstore.book.v1;
+
+option go_package = "modern-micro-services/gen/bookstore/book/v1;bookv1";
+
+// BookService 图书服务 —— 供其他微服务内部调用
+service BookService {
+  // GetBook 根据 ID 获取单本图书
+  rpc GetBook(GetBookRequest) returns (GetBookResponse);
+
+  // GetBooks 批量获取图书
+  rpc GetBooks(GetBooksRequest) returns (GetBooksResponse);
+
+  // DeductStock 扣减库存（下单时调用）
+  rpc DeductStock(DeductStockRequest) returns (DeductStockResponse);
+
+  // RestoreStock 恢复库存（Saga 补偿时调用）
+  rpc RestoreStock(RestoreStockRequest) returns (RestoreStockResponse);
+}
+
+message GetBookRequest {
+  uint32 id = 1;
+}
+
+message GetBookResponse {
+  uint32 id = 1;
+  string title = 2;
+  string author = 3;
+  double price = 4;
+  int32 stock = 5;
+  string description = 6;
+}
+
+message GetBooksRequest {
+  repeated uint32 ids = 1;
+}
+
+message GetBooksResponse {
+  repeated GetBookResponse books = 1;
+}
+
+message DeductStockRequest {
+  uint32 book_id = 1;
+  int32 quantity = 2;
+}
+
+message DeductStockResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RestoreStockRequest {
+  uint32 book_id = 1;
+  int32 quantity = 2;
+}
+
+message RestoreStockResponse {
+  bool success = 1;
+  string message = 2;
+}

@@ -1,18 +1,56 @@
 services:
-  # PostgreSQL 数据库
-  postgres:
+  # ==================== 基础设施服务 ====================
+
+  # PostgreSQL - 用户数据库
+  postgres-user:
     image: postgres:18-alpine
-    container_name: bookstore-postgres
+    container_name: bookstore-postgres-user
     environment:
       POSTGRES_USER: bookstore
       POSTGRES_PASSWORD: bookstore123
-      POSTGRES_DB: bookstore_db
+      POSTGRES_DB: user_db
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_user_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bookstore -d bookstore_db"]
+      test: ["CMD-SHELL", "pg_isready -U bookstore -d user_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL - 图书数据库
+  postgres-book:
+    image: postgres:18-alpine
+    container_name: bookstore-postgres-book
+    environment:
+      POSTGRES_USER: bookstore
+      POSTGRES_PASSWORD: bookstore123
+      POSTGRES_DB: book_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_book_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookstore -d book_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL - 订单数据库
+  postgres-order:
+    image: postgres:18-alpine
+    container_name: bookstore-postgres-order
+    environment:
+      POSTGRES_USER: bookstore
+      POSTGRES_PASSWORD: bookstore123
+      POSTGRES_DB: order_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookstore -d order_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,8 +74,8 @@ services:
     image: rabbitmq:4-management-alpine
     container_name: bookstore-rabbitmq
     ports:
-      - "5672:5672"    # AMQP 协议端口
-      - "15672:15672"  # 管理界面端口
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     environment:
@@ -49,34 +87,65 @@ services:
       timeout: 5s
       retries: 5
 
-  # Go 应用
-  app:
-    build: .
-    container_name: bookstore-app
+  # ==================== 微服务 ====================
+
+  # 用户服务 (gRPC :9091 + HTTP :8081)
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: user-service
+    container_name: bookstore-user-service
     ports:
-      - "8080:8080"
+      - "9091:9091"   # gRPC
+      - "8081:8081"   # HTTP (register/login/profile)
     environment:
       - GIN_MODE=debug
     depends_on:
-      postgres:
+      postgres-user:
+        condition: service_healthy
+
+  # 图书服务 (gRPC :9092)
+  book-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: book-service
+    container_name: bookstore-book-service
+    ports:
+      - "9092:9092"   # gRPC
+    environment:
+      - GIN_MODE=debug
+    depends_on:
+      postgres-book:
         condition: service_healthy
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
 
-  # 通知消费者
-  consumer:
-    build: .
-    container_name: bookstore-consumer
-    command: ["./consumer"]
+  # 订单服务 (HTTP :8080)
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: order-service
+    container_name: bookstore-order-service
+    ports:
+      - "8080:8080"   # HTTP API
     environment:
       - GIN_MODE=debug
     depends_on:
+      postgres-order:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      user-service:
+        condition: service_started
+      book-service:
+        condition: service_started
 
 volumes:
-  postgres_data:
+  postgres_user_data:
+  postgres_book_data:
+  postgres_order_data:
   redis_data:
   rabbitmq_data:

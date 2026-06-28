@@ -1,0 +1,30 @@
+server:
+  port: 8080
+  mode: debug
+
+database:
+  host: postgres-order
+  port: 5432
+  user: bookstore
+  password: bookstore123
+  dbname: order_db
+  sslmode: disable
+  max_idle_conns: 10
+  max_open_conns: 100
+
+rabbitmq:
+  host: rabbitmq
+  port: 5672
+  user: guest
+  password: guest
+
+jwt:
+  secret: your-secret-key-change-in-production
+  expire_hours: 72
+
+log:
+  level: info
+
+grpc:
+  user_service_addr: user-service:9091
+  book_service_addr: book-service:9092

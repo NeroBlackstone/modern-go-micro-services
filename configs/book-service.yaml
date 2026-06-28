@@ -1,0 +1,22 @@
+server:
+  grpc_port: 9092
+  mode: debug
+
+database:
+  host: postgres-book
+  port: 5432
+  user: bookstore
+  password: bookstore123
+  dbname: book_db
+  sslmode: disable
+  max_idle_conns: 10
+  max_open_conns: 100
+
+redis:
+  host: redis
+  port: 6379
+  password: ""
+  db: 0
+
+log:
+  level: info
