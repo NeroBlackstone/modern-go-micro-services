@@ -31,6 +31,24 @@ services:
       timeout: 5s
       retries: 5
 
+  # RabbitMQ 消息队列
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: bookstore-rabbitmq
+    ports:
+      - "5672:5672"    # AMQP 协议端口
+      - "15672:15672"  # 管理界面端口
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Go 应用
   app:
     build: .
@@ -44,7 +62,21 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # 通知消费者
+  consumer:
+    build: .
+    container_name: bookstore-consumer
+    command: ["./consumer"]
+    environment:
+      - GIN_MODE=debug
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   postgres_data:
   redis_data:
+  rabbitmq_data:

@@ -83,7 +83,7 @@ func (r *CachedBookRepository) releaseLock(key string) {
 
 ```go
 type CacheItem struct {
-    Data       interface{} `json:"data"`
+    Data       any `json:"data"`
     ExpireTime time.Time   `json:"expire_time"` // 逻辑过期时间
 }
 

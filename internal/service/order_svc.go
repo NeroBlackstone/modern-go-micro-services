@@ -6,7 +6,9 @@ import (
 
 	"modern-micro-services/internal/model"
 	"modern-micro-services/internal/repository"
+	"modern-micro-services/pkg/rabbitmq"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -20,13 +22,17 @@ type OrderService interface {
 type orderService struct {
 	orderRepo repository.OrderRepository
 	bookRepo  repository.BookRepository
+	producer  *rabbitmq.Producer
+	logger    *zap.Logger
 	db        *gorm.DB
 }
 
-func NewOrderService(orderRepo repository.OrderRepository, bookRepo repository.BookRepository, db *gorm.DB) OrderService {
+func NewOrderService(orderRepo repository.OrderRepository, bookRepo repository.BookRepository, producer *rabbitmq.Producer, logger *zap.Logger, db *gorm.DB) OrderService {
 	return &orderService{
 		orderRepo: orderRepo,
 		bookRepo:  bookRepo,
+		producer:  producer,
+		logger:    logger,
 		db:        db,
 	}
 }
@@ -101,6 +107,16 @@ func (s *orderService) Create(userID uint, req *model.CreateOrderRequest) (*mode
 
 	if err != nil {
 		return nil, err
+	}
+
+	// 异步发布订单创建事件（fire-and-forget，失败只记日志不阻塞主流程）
+	event := model.NewOrderCreatedEvent(order)
+	if err := s.producer.PublishOrderCreated(event); err != nil {
+		s.logger.Error("failed to publish order created event",
+			zap.Uint("order_id", order.ID),
+			zap.Error(err),
+		)
+		// 不返回错误 — 消息发布失败不应影响用户下单体验
 	}
 
 	return order, nil

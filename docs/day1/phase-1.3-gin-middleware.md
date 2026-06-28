@@ -152,7 +152,7 @@ c.Set("user_id", claims.UserID)
 
 // Handler 读取
 func GetCurrentUserID(c *gin.Context) (uint, bool) {
-    userID, exists := c.Get("user_id")  // 返回 interface{}，需类型断言
+    userID, exists := c.Get("user_id")  // 返回 any，需类型断言
     if !exists {
         response.Unauthorized(c, "user not authenticated")
         return 0, false

@@ -92,7 +92,7 @@ c.Next()  // 继续执行后续中间件和 Handler
 ```go
 // GetCurrentUserID 从 Context 中取出中间件存入的 user_id
 func GetCurrentUserID(c *gin.Context) (uint, bool) {
-    userID, exists := c.Get("user_id")  // 返回 interface{}，需要类型断言
+    userID, exists := c.Get("user_id")  // 返回 any，需要类型断言
     if !exists {
         response.Unauthorized(c, "user not authenticated")
         return 0, false

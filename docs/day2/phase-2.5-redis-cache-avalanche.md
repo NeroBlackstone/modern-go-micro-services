@@ -60,7 +60,7 @@ type LocalCache struct {
 }
 
 type cacheItem struct {
-    value     interface{}
+    value     any
     expireAt time.Time
 }
 
@@ -73,7 +73,7 @@ func NewLocalCache() *LocalCache {
     return c
 }
 
-func (c *LocalCache) Get(key string) (interface{}, bool) {
+func (c *LocalCache) Get(key string) (any, bool) {
     c.mu.RLock()
     defer c.mu.RUnlock()
 
@@ -84,7 +84,7 @@ func (c *LocalCache) Get(key string) (interface{}, bool) {
     return item.value, true
 }
 
-func (c *LocalCache) Set(key string, value interface{}, ttl time.Duration) {
+func (c *LocalCache) Set(key string, value any, ttl time.Duration) {
     c.mu.Lock()
     defer c.mu.Unlock()
 

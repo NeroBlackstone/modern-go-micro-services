@@ -18,6 +18,12 @@ redis:
   password: ""
   db: 0
 
+rabbitmq:
+  host: localhost
+  port: 5672
+  user: guest
+  password: guest
+
 jwt:
   secret: your-secret-key-change-in-production
   expire_hours: 72

@@ -9,6 +9,7 @@ import (
 	"modern-micro-services/internal/model"
 	"modern-micro-services/internal/repository"
 	"modern-micro-services/internal/service"
+	rabbitmqpkg "modern-micro-services/pkg/rabbitmq"
 	redispkg "modern-micro-services/pkg/redis"
 
 	_ "modern-micro-services/docs" // Swagger docs
@@ -76,6 +77,19 @@ func main() {
 	}
 	defer redisClient.Close()
 
+	// 初始化RabbitMQ
+	rabbitConn, err := rabbitmqpkg.NewConnection(&cfg.RabbitMQ, logger)
+	if err != nil {
+		logger.Fatal("failed to connect to rabbitmq", zap.Error(err))
+	}
+	defer rabbitConn.Close()
+
+	producer, err := rabbitmqpkg.NewProducer(rabbitConn, logger)
+	if err != nil {
+		logger.Fatal("failed to create rabbitmq producer", zap.Error(err))
+	}
+	defer producer.Close()
+
 	// 初始化各层
 	userRepo := repository.NewUserRepository(db)
 	bookRepo := repository.NewCachedBookRepository(db, redisClient, logger) // 使用带缓存的图书仓库
@@ -84,7 +98,7 @@ func main() {
 
 	userSvc := service.NewUserService(userRepo, &cfg.JWT)
 	bookSvc := service.NewBookService(bookRepo)
-	orderSvc := service.NewOrderService(orderRepo, bookRepo, db)
+	orderSvc := service.NewOrderService(orderRepo, bookRepo, producer, logger, db)
 	reviewSvc := service.NewReviewService(reviewRepo)
 
 	userHandler := handler.NewUserHandler(userSvc)

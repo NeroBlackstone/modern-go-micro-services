@@ -83,7 +83,7 @@ logger.Info("user action",
 logger.Info("order details",
     zap.Strings("tags", []string{"premium", "urgent"}),
     zap.Int64s("order_ids", []int64{1001, 1002, 1003}),
-    zap.Any("metadata", map[string]interface{}{
+    zap.Any("metadata", map[string]any{
         "key": "value",
         "nested": map[string]int{"a": 1},
     }),
@@ -422,7 +422,7 @@ if logger.Core().Enabled(zap.DebugLevel) {
 ```go
 // 对于高频日志，使用对象池
 var loggerPool = &sync.Pool{
-    New: func() interface{} {
+    New: func() any {
         return globalLogger.WithOptions(zap.AddCallerSkip(1))
     },
 }

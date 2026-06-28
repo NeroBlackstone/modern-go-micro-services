@@ -7,11 +7,12 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Log      LogConfig      `mapstructure:"log"`
+	Server    ServerConfig    `mapstructure:"server"`
+	Database  DatabaseConfig  `mapstructure:"database"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	RabbitMQ  RabbitMQConfig  `mapstructure:"rabbitmq"`
+	JWT       JWTConfig       `mapstructure:"jwt"`
+	Log       LogConfig       `mapstructure:"log"`
 }
 
 type ServerConfig struct {
@@ -44,6 +45,18 @@ type JWTConfig struct {
 
 type LogConfig struct {
 	Level string `mapstructure:"level"`
+}
+
+type RabbitMQConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+}
+
+func (r *RabbitMQConfig) AmqpURL() string {
+	return fmt.Sprintf("amqp://%s:%s@%s:%d/",
+		r.User, r.Password, r.Host, r.Port)
 }
 
 func (d *DatabaseConfig) DSN() string {
