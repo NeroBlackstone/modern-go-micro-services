@@ -87,6 +87,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # Consul 服务发现
+  consul:
+    image: hashicorp/consul:2.0.1
+    container_name: bookstore-consul
+    ports:
+      - "8500:8500" # Web UI + HTTP API
+      - "8600:8600/udp" # DNS
+    command: agent -dev -client=0.0.0.0
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ==================== 微服务 ====================
 
   # 用户服务 (gRPC :9091 + HTTP :8081)
@@ -97,12 +111,14 @@ services:
       target: user-service
     container_name: bookstore-user-service
     ports:
-      - "9091:9091"   # gRPC
-      - "8081:8081"   # HTTP (register/login/profile)
+      - "9091:9091" # gRPC
+      - "8081:8081" # HTTP (register/login/profile)
     environment:
       - GIN_MODE=debug
     depends_on:
       postgres-user:
+        condition: service_healthy
+      consul:
         condition: service_healthy
 
   # 图书服务 (gRPC :9092)
@@ -113,13 +129,15 @@ services:
       target: book-service
     container_name: bookstore-book-service
     ports:
-      - "9092:9092"   # gRPC
+      - "9092:9092" # gRPC
     environment:
       - GIN_MODE=debug
     depends_on:
       postgres-book:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      consul:
         condition: service_healthy
 
   # 订单服务 (HTTP :8080)
@@ -130,13 +148,15 @@ services:
       target: order-service
     container_name: bookstore-order-service
     ports:
-      - "8080:8080"   # HTTP API
+      - "8080:8080" # HTTP API
     environment:
       - GIN_MODE=debug
     depends_on:
       postgres-order:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      consul:
         condition: service_healthy
       user-service:
         condition: service_started

@@ -11,6 +11,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Redis    RedisConfig    `mapstructure:"redis"`
 	Log      LogConfig      `mapstructure:"log"`
+	Consul   ConsulConfig   `mapstructure:"consul"`
 }
 
 type ServerConfig struct {
@@ -38,6 +39,10 @@ type RedisConfig struct {
 
 type LogConfig struct {
 	Level string `mapstructure:"level"`
+}
+
+type ConsulConfig struct {
+	Addr string `mapstructure:"addr"`
 }
 
 func (d *DatabaseConfig) DSN() string {

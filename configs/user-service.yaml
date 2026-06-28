@@ -19,3 +19,6 @@ jwt:
 
 log:
   level: info
+
+consul:
+  addr: consul:8500
