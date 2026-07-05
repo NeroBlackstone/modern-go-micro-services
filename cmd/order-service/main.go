@@ -82,7 +82,7 @@ func main() {
 	bookConn, err := grpc.NewClient(
 		"consul:///book-service",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultServiceConfig(discovery.ServiceConfigJSON()),
+		grpc.WithDefaultServiceConfig(`{"loadBalancingConfig":[{"round_robin":{}}]}`),
 	)
 	if err != nil {
 		logger.Fatal("failed to connect to book-service via consul", zap.Error(err))
@@ -92,7 +92,7 @@ func main() {
 	userConn, err := grpc.NewClient(
 		"consul:///user-service",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultServiceConfig(discovery.ServiceConfigJSON()),
+		grpc.WithDefaultServiceConfig(`{"loadBalancingConfig":[{"round_robin":{}}]}`),
 	)
 	if err != nil {
 		logger.Warn("failed to connect to user-service via consul (non-critical)", zap.Error(err))

@@ -1,3 +1,5 @@
+name: bookstore
+
 services:
   # ==================== 基础设施服务 ====================
 
@@ -87,6 +89,25 @@ services:
       timeout: 5s
       retries: 5
 
+  # Traefik API Gateway
+  traefik:
+    image: traefik:v3.7
+    container_name: bookstore-traefik
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api.dashboard=true"
+      - "--log.level=INFO"
+    ports:
+      - "80:80" # HTTP 入口
+      - "8080:8080" # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      consul:
+        condition: service_healthy
+
   # Consul 服务发现
   consul:
     image: hashicorp/consul:2.0.1
@@ -111,8 +132,13 @@ services:
       target: user-service
     container_name: bookstore-user-service
     ports:
-      - "9091:9091" # gRPC
-      - "8081:8081" # HTTP (register/login/profile)
+      - "9091:9091" # gRPC (内部通信 + 直连调试)
+      # HTTP :8081 通过 Traefik 暴露，不再直接映射 host 端口
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.user.rule=PathPrefix(`/api/v1/auth`) || PathPrefix(`/api/v1/user`)"
+      - "traefik.http.routers.user.entrypoints=web"
+      - "traefik.http.services.user.loadbalancer.server.port=8081"
     environment:
       - GIN_MODE=debug
     depends_on:
@@ -147,8 +173,12 @@ services:
       dockerfile: Dockerfile
       target: order-service
     container_name: bookstore-order-service
-    ports:
-      - "8080:8080" # HTTP API
+    # HTTP :8080 通过 Traefik 暴露，不再直接映射 host 端口
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.order.rule=PathPrefix(`/api/v1/orders`) || PathPrefix(`/api/v1/reviews`)"
+      - "traefik.http.routers.order.entrypoints=web"
+      - "traefik.http.services.order.loadbalancer.server.port=8080"
     environment:
       - GIN_MODE=debug
     depends_on:

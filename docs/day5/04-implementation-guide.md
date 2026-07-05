@@ -14,7 +14,7 @@ internal/discovery/
 ### Step 1: Docker Compose 添加 Consul
 
 ```yaml
-# docker-compose.yml
+# compose.yml
 consul:
   image: hashicorp/consul:2.0.1
   container_name: bookstore-consul
@@ -219,7 +219,7 @@ bookClient := client.NewBookClientFromConn(bookConn, logger)
 ### 1. 启动服务
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 2. 查看 Consul UI
@@ -244,7 +244,7 @@ curl http://localhost:8500/v1/catalog/services
 
 ```bash
 # 停止 book-service
-docker-compose stop book-service
+docker compose stop book-service
 
 # 等待 30 秒后，查看 Consul UI
 # book-service 应该变为 critical

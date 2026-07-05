@@ -18,7 +18,7 @@ modern-micro-services/
 ├── pkg/response/                 # 公共工具包（统一响应格式）
 ├── docs/                         # Swagger 文档（自动生成）
 ├── configs/config.yaml           # 配置文件
-├── docker-compose.yml            # Docker 编排（App + PostgreSQL）
+├── compose.yml                   # Docker 编排（App + PostgreSQL）
 └── Dockerfile                    # 应用镜像构建
 ```
 
