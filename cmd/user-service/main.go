@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"modern-micro-services/internal/discovery"
+	"modern-micro-services/internal/middleware"
 	"modern-micro-services/internal/user/config"
 	"modern-micro-services/internal/user/handler"
 	"modern-micro-services/internal/user/model"
@@ -17,6 +18,7 @@ import (
 	"modern-micro-services/internal/user/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -97,6 +99,7 @@ func main() {
 	gin.SetMode(cfg.Server.Mode)
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(middleware.PrometheusMiddleware("user-service"))
 
 	// 公开接口
 	r.POST("/api/v1/auth/register", httpHandler.Register)
@@ -114,6 +117,9 @@ func main() {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "service": "user-service"})
 	})
+
+	// Prometheus 指标端点
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// 优雅退出
 	quit := make(chan os.Signal, 1)

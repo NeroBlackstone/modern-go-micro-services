@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"modern-micro-services/internal/metrics"
 	"modern-micro-services/internal/order/config"
 	"modern-micro-services/internal/order/model"
 	"modern-micro-services/internal/order/service"
@@ -87,6 +88,9 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
 		return
 	}
+
+	// 记录业务指标
+	metrics.OrdersCreatedTotal.Inc()
 
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": order})
 }

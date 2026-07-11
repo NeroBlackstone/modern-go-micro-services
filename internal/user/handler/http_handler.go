@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"modern-micro-services/internal/metrics"
 	"modern-micro-services/internal/user/config"
 	"modern-micro-services/internal/user/model"
 	"modern-micro-services/internal/user/service"
@@ -34,6 +35,9 @@ func (h *HTTPHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
 		return
 	}
+
+	// 记录业务指标
+	metrics.UsersCreatedTotal.Inc()
 
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": result})
 }

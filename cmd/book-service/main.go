@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,6 +20,7 @@ import (
 	redispkg "modern-micro-services/internal/book/redis"
 	"modern-micro-services/internal/discovery"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -64,6 +68,38 @@ func main() {
 	go func() {
 		if err := grpcServer.Start(); err != nil {
 			logger.Fatal("gRPC server error", zap.Error(err))
+		}
+	}()
+
+	// 启动 HTTP 服务器用于 metrics 和健康检查
+	go func() {
+		metricsMux := http.NewServeMux()
+		metricsMux.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
+		metricsMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "book-service"})
+		})
+
+		metricsAddr := fmt.Sprintf(":%d", cfg.Server.MetricsPort)
+		logger.Info("book-service metrics server starting", zap.String("addr", metricsAddr))
+		metricsServer := &http.Server{
+			Addr:    metricsAddr,
+			Handler: metricsMux,
+		}
+
+		// 优雅关闭
+		go func() {
+			quit := make(chan os.Signal, 1)
+			signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+			<-quit
+			logger.Info("shutting down metrics server...")
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			metricsServer.Shutdown(ctx)
+		}()
+
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("metrics server error", zap.Error(err))
 		}
 	}()
 

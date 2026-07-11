@@ -15,8 +15,9 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	GRPCPort int    `mapstructure:"grpc_port"`
-	Mode     string `mapstructure:"mode"`
+	GRPCPort    int    `mapstructure:"grpc_port"`
+	MetricsPort int    `mapstructure:"metrics_port"`
+	Mode        string `mapstructure:"mode"`
 }
 
 type DatabaseConfig struct {

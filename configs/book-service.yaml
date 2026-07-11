@@ -1,5 +1,6 @@
 server:
   grpc_port: 9092
+  metrics_port: 9093  # Prometheus metrics 端点
   mode: debug
 
 database:

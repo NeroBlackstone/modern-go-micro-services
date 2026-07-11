@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"modern-micro-services/internal/discovery"
+	"modern-micro-services/internal/middleware"
 	"modern-micro-services/internal/order/client"
 	"modern-micro-services/internal/order/config"
 	"modern-micro-services/internal/order/handler"
@@ -14,6 +15,7 @@ import (
 	rabbitmqpkg "modern-micro-services/internal/order/rabbitmq"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -114,11 +116,15 @@ func main() {
 	gin.SetMode(cfg.Server.Mode)
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(middleware.PrometheusMiddleware("order-service"))
 
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "service": "order-service"})
 	})
+
+	// Prometheus 指标端点
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// API v1 路由组
 	v1 := r.Group("/api/v1")
