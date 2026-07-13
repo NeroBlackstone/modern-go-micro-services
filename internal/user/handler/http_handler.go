@@ -11,6 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go.opentelemetry.io/otel/attribute"
+	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
 type HTTPHandler struct {
@@ -37,7 +39,9 @@ func (h *HTTPHandler) Register(c *gin.Context) {
 	}
 
 	// 记录业务指标
-	metrics.UsersCreatedTotal.Inc()
+	metrics.UsersCreatedTotal.Add(c.Request.Context(), 1,
+		otelmetric.WithAttributes(attribute.String("service", "user-service")),
+	)
 
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": result})
 }

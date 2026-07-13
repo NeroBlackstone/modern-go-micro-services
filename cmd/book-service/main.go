@@ -19,6 +19,8 @@ import (
 	"modern-micro-services/internal/book/service"
 	redispkg "modern-micro-services/internal/book/redis"
 	"modern-micro-services/internal/discovery"
+	"modern-micro-services/internal/metrics"
+	"modern-micro-services/internal/tracing"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -39,6 +41,22 @@ func main() {
 		logger, _ = zap.NewProduction()
 	}
 	defer logger.Sync()
+
+	// 初始化链路追踪（Tempo + OpenTelemetry）
+	_, tracingShutdown := tracing.InitTracing("book-service", cfg.Tracing.Endpoint)
+	defer tracingShutdown(context.Background())
+
+	// 初始化 OTel Metrics（Prometheus exporter）
+	metricsShutdown, err := tracing.InitMeterProvider("book-service", cfg.Server.Mode)
+	if err != nil {
+		logger.Fatal("failed to init meter provider", zap.Error(err))
+	}
+	defer metricsShutdown(context.Background())
+
+	// 初始化 metric instruments
+	if err := metrics.InitMetrics(); err != nil {
+		logger.Fatal("failed to init metrics", zap.Error(err))
+	}
 
 	db, err := gorm.Open(postgres.Open(cfg.Database.DSN()), &gorm.Config{})
 	if err != nil {

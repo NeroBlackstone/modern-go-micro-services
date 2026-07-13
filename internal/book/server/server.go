@@ -6,6 +6,7 @@ import (
 
 	bookv1 "modern-micro-services/gen/bookstore/book/v1"
 	"modern-micro-services/internal/book/handler"
+	"modern-micro-services/internal/tracing"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -24,7 +25,9 @@ func NewGRPCServer(grpcHandler *handler.GRPCHandler, port int, logger *zap.Logge
 		return nil, fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(tracing.UnaryServerInterceptor()),
+	)
 	bookv1.RegisterBookServiceServer(grpcServer, grpcHandler)
 
 	return &GRPCServer{

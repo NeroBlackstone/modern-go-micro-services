@@ -12,6 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go.opentelemetry.io/otel/attribute"
+	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
 type OrderHandler struct {
@@ -83,14 +85,16 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	order, err := h.orderSvc.Create(userID, &req)
+	order, err := h.orderSvc.Create(c.Request.Context(), userID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
 		return
 	}
 
 	// 记录业务指标
-	metrics.OrdersCreatedTotal.Inc()
+	metrics.OrdersCreatedTotal.Add(c.Request.Context(), 1,
+		otelmetric.WithAttributes(attribute.String("service", "order-service")),
+	)
 
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": order})
 }

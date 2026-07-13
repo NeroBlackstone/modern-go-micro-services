@@ -10,8 +10,13 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
+	Tracing  TracingConfig  `mapstructure:"tracing"`
 	Log      LogConfig      `mapstructure:"log"`
 	Consul   ConsulConfig   `mapstructure:"consul"`
+}
+
+type TracingConfig struct {
+	Endpoint string `mapstructure:"endpoint"`
 }
 
 type ServerConfig struct {

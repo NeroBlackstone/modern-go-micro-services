@@ -220,4 +220,4 @@ rate(users_created_total[1m]) * 60
 - 分析性能瓶颈
 - 为后续学习分布式追踪打下基础
 
-**Day 8 预告**：我们将学习分布式追踪（Jaeger/OpenTelemetry）和日志聚合（Loki）。
+**Day 8 预告**：我们将学习分布式追踪（Grafana Tempo/OpenTelemetry）和日志聚合（Loki）。

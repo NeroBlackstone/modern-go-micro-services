@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
 	"modern-micro-services/internal/discovery"
+	"modern-micro-services/internal/metrics"
 	"modern-micro-services/internal/middleware"
 	"modern-micro-services/internal/order/client"
 	"modern-micro-services/internal/order/config"
@@ -13,6 +15,7 @@ import (
 	"modern-micro-services/internal/order/repository"
 	"modern-micro-services/internal/order/service"
 	rabbitmqpkg "modern-micro-services/internal/order/rabbitmq"
+	"modern-micro-services/internal/tracing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -37,6 +40,22 @@ func main() {
 		logger, _ = zap.NewProduction()
 	}
 	defer logger.Sync()
+
+	// 初始化链路追踪（Tempo + OpenTelemetry）
+	_, tracingShutdown := tracing.InitTracing("order-service", cfg.Tracing.Endpoint)
+	defer tracingShutdown(context.Background())
+
+	// 初始化 OTel Metrics（Prometheus exporter）
+	metricsShutdown, err := tracing.InitMeterProvider("order-service", cfg.Server.Mode)
+	if err != nil {
+		logger.Fatal("failed to init meter provider", zap.Error(err))
+	}
+	defer metricsShutdown(context.Background())
+
+	// 初始化 metric instruments
+	if err := metrics.InitMetrics(); err != nil {
+		logger.Fatal("failed to init metrics", zap.Error(err))
+	}
 
 	// 连接数据库
 	db, err := gorm.Open(postgres.Open(cfg.Database.DSN()), &gorm.Config{})
@@ -116,7 +135,8 @@ func main() {
 	gin.SetMode(cfg.Server.Mode)
 	r := gin.New()
 	r.Use(gin.Recovery())
-	r.Use(middleware.PrometheusMiddleware("order-service"))
+	r.Use(middleware.Tracing())
+	r.Use(middleware.MetricsMiddleware("order-service"))
 
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {

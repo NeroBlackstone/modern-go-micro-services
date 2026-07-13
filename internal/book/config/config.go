@@ -10,8 +10,13 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Redis    RedisConfig    `mapstructure:"redis"`
+	Tracing  TracingConfig  `mapstructure:"tracing"`
 	Log      LogConfig      `mapstructure:"log"`
 	Consul   ConsulConfig   `mapstructure:"consul"`
+}
+
+type TracingConfig struct {
+	Endpoint string `mapstructure:"endpoint"`
 }
 
 type ServerConfig struct {

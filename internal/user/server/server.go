@@ -5,6 +5,7 @@ import (
 	"net"
 
 	userv1 "modern-micro-services/gen/bookstore/user/v1"
+	"modern-micro-services/internal/tracing"
 	"modern-micro-services/internal/user/handler"
 
 	"go.uber.org/zap"
@@ -24,7 +25,9 @@ func NewGRPCServer(grpcHandler *handler.GRPCHandler, port int, logger *zap.Logge
 		return nil, fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(tracing.UnaryServerInterceptor()),
+	)
 	userv1.RegisterUserServiceServer(grpcServer, grpcHandler)
 
 	return &GRPCServer{

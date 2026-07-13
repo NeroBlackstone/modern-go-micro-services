@@ -222,7 +222,7 @@ Dashboard / Alert
    - 结构化日志
    - 日志搜索和分析
 
-3. **分布式追踪**：Jaeger + OpenTelemetry（后续 Day 8）
+3. **分布式追踪**：Grafana Tempo + OpenTelemetry（后续 Day 8）
    - 跨服务追踪
    - 延迟分析
 

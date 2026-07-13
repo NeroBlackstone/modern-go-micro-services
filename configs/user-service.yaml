@@ -17,6 +17,9 @@ jwt:
   secret: your-secret-key-change-in-production
   expire_hours: 72
 
+tracing:
+  endpoint: "tempo:4318"
+
 log:
   level: info
 

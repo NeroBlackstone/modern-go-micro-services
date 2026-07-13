@@ -14,7 +14,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_user_data:/var/lib/postgresql/data
+      - postgres_user_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bookstore -d user_db"]
       interval: 10s
@@ -32,7 +32,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_book_data:/var/lib/postgresql/data
+      - postgres_book_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bookstore -d book_db"]
       interval: 10s
@@ -50,7 +50,7 @@ services:
     ports:
       - "5434:5432"
     volumes:
-      - postgres_order_data:/var/lib/postgresql/data
+      - postgres_order_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bookstore -d order_db"]
       interval: 10s
@@ -122,6 +122,18 @@ services:
       timeout: 5s
       retries: 5
 
+  # Grafana Tempo 分布式链路追踪
+  tempo:
+    image: grafana/tempo:latest
+    container_name: bookstore-tempo
+    ports:
+      - "3200:3200" # Tempo HTTP API
+      - "4318:4318" # OTLP HTTP（接收 traces）
+    volumes:
+      - ./configs/tempo.yml:/etc/tempo/tempo.yml
+      - tempo_data:/var/tempo
+    command: -config.file=/etc/tempo/tempo.yml
+
   # ==================== 监控服务 ====================
 
   # Prometheus 指标监控
@@ -157,8 +169,10 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
+      - tempo
 
   # ==================== 微服务 ====================
 
@@ -168,6 +182,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: user-service
+      args:
+        GOPROXY: https://goproxy.cn,direct
     container_name: bookstore-user-service
     ports:
       - "9091:9091" # gRPC (内部通信 + 直连调试)
@@ -184,6 +200,8 @@ services:
         condition: service_healthy
       consul:
         condition: service_healthy
+      tempo:
+        condition: service_started
 
   # 图书服务 (gRPC :9092 + Metrics :9093)
   book-service:
@@ -191,6 +209,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: book-service
+      args:
+        GOPROXY: https://goproxy.cn,direct
     container_name: bookstore-book-service
     ports:
       - "9092:9092" # gRPC
@@ -204,6 +224,8 @@ services:
         condition: service_healthy
       consul:
         condition: service_healthy
+      tempo:
+        condition: service_started
 
   # 订单服务 (HTTP :8080)
   order-service:
@@ -211,6 +233,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: order-service
+      args:
+        GOPROXY: https://goproxy.cn,direct
     container_name: bookstore-order-service
     # HTTP :8080 通过 Traefik 暴露，不再直接映射 host 端口
     labels:
@@ -227,6 +251,8 @@ services:
         condition: service_healthy
       consul:
         condition: service_healthy
+      tempo:
+        condition: service_started
       user-service:
         condition: service_started
       book-service:
@@ -240,3 +266,4 @@ volumes:
   rabbitmq_data:
   prometheus_data:
   grafana_data:
+  tempo_data:

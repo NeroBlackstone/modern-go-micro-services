@@ -8,8 +8,8 @@ import (
 	"modern-micro-services/internal/metrics"
 )
 
-// PrometheusMiddleware 创建一个 Prometheus 指标收集中间件
-func PrometheusMiddleware(serviceName string) gin.HandlerFunc {
+// MetricsMiddleware 创建一个 OTel 指标收集中间件
+func MetricsMiddleware(serviceName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
@@ -20,17 +20,13 @@ func PrometheusMiddleware(serviceName string) gin.HandlerFunc {
 		duration := time.Since(start).Seconds()
 		status := fmt.Sprintf("%d", c.Writer.Status())
 
-		metrics.HTTPRequestsTotal.WithLabelValues(
+		metrics.RecordHTTPRequest(
+			c.Request.Context(),
 			serviceName,
 			c.Request.Method,
 			c.FullPath(),
 			status,
-		).Inc()
-
-		metrics.HTTPRequestDuration.WithLabelValues(
-			serviceName,
-			c.Request.Method,
-			c.FullPath(),
-		).Observe(duration)
+			duration,
+		)
 	}
 }

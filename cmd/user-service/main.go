@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -9,7 +10,9 @@ import (
 	"time"
 
 	"modern-micro-services/internal/discovery"
+	"modern-micro-services/internal/metrics"
 	"modern-micro-services/internal/middleware"
+	"modern-micro-services/internal/tracing"
 	"modern-micro-services/internal/user/config"
 	"modern-micro-services/internal/user/handler"
 	"modern-micro-services/internal/user/model"
@@ -39,6 +42,22 @@ func main() {
 		logger, _ = zap.NewProduction()
 	}
 	defer logger.Sync()
+
+	// 初始化链路追踪（Tempo + OpenTelemetry）
+	_, tracingShutdown := tracing.InitTracing("user-service", cfg.Tracing.Endpoint)
+	defer tracingShutdown(context.Background())
+
+	// 初始化 OTel Metrics（Prometheus exporter）
+	metricsShutdown, err := tracing.InitMeterProvider("user-service", cfg.Server.Mode)
+	if err != nil {
+		logger.Fatal("failed to init meter provider", zap.Error(err))
+	}
+	defer metricsShutdown(context.Background())
+
+	// 初始化 metric instruments
+	if err := metrics.InitMetrics(); err != nil {
+		logger.Fatal("failed to init metrics", zap.Error(err))
+	}
 
 	// 连接数据库
 	db, err := gorm.Open(postgres.Open(cfg.Database.DSN()), &gorm.Config{})
@@ -99,7 +118,8 @@ func main() {
 	gin.SetMode(cfg.Server.Mode)
 	r := gin.New()
 	r.Use(gin.Recovery())
-	r.Use(middleware.PrometheusMiddleware("user-service"))
+	r.Use(middleware.Tracing())
+	r.Use(middleware.MetricsMiddleware("user-service"))
 
 	// 公开接口
 	r.POST("/api/v1/auth/register", httpHandler.Register)

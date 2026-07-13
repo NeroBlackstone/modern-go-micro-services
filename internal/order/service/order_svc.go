@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -14,7 +15,7 @@ import (
 )
 
 type OrderService interface {
-	Create(userID uint, req *model.CreateOrderRequest) (*model.Order, error)
+	Create(ctx context.Context, userID uint, req *model.CreateOrderRequest) (*model.Order, error)
 	GetByID(id, userID uint) (*model.Order, error)
 	ListByUserID(userID uint, query *model.OrderQuery) ([]model.Order, int64, error)
 	UpdateStatus(id, userID uint, status model.OrderStatus) error
@@ -49,7 +50,7 @@ func NewOrderService(
 // 2. gRPC 调用 book-service 扣减库存
 // 3. 成功 → 更新订单为 paid，发布事件
 // 4. 失败 → 调 book-service 恢复库存 + 本地取消订单
-func (s *orderService) Create(userID uint, req *model.CreateOrderRequest) (*model.Order, error) {
+func (s *orderService) Create(ctx context.Context, userID uint, req *model.CreateOrderRequest) (*model.Order, error) {
 	// 收集所有图书 ID
 	bookIDs := make([]uint, 0, len(req.Items))
 	for _, item := range req.Items {
