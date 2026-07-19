@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"modern-micro-services/internal/discovery"
 	"modern-micro-services/internal/metrics"
@@ -15,10 +16,12 @@ import (
 	"modern-micro-services/internal/order/repository"
 	"modern-micro-services/internal/order/service"
 	rabbitmqpkg "modern-micro-services/internal/order/rabbitmq"
+	"modern-micro-services/internal/resilience"
 	"modern-micro-services/internal/tracing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sony/gobreaker/v2"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -98,12 +101,57 @@ func main() {
 	// 注册自定义 resolver 到 gRPC
 	resolver.Register(consulBuilder)
 
-	// 初始化 gRPC clients，使用 consul:/// 服务名 进行服务发现
-	// gRPC 会自动使用我们的 Consul resolver 解析地址
+	// ========== 初始化容错组件 ==========
+
+	// 为 book-service 创建熔断器
+	bookCB := resilience.NewCircuitBreaker(
+		resilience.CircuitBreakerConfig{
+			Name:        "book-service",
+			MaxRequests: 3,
+			Interval:    30 * time.Second,
+			Timeout:     10 * time.Second,
+			ReadyToTrip: func(counts gobreaker.Counts) bool {
+				return counts.ConsecutiveFailures > 5
+			},
+		},
+		logger,
+	)
+
+	// 为 user-service 创建熔断器
+	userCB := resilience.NewCircuitBreaker(
+		resilience.CircuitBreakerConfig{
+			Name:        "user-service",
+			MaxRequests: 3,
+			Interval:    30 * time.Second,
+			Timeout:     10 * time.Second,
+			ReadyToTrip: func(counts gobreaker.Counts) bool {
+				return counts.ConsecutiveFailures > 5
+			},
+		},
+		logger,
+	)
+
+	// 重试配置
+	retryCfg := resilience.DefaultRetryConfig(logger)
+
+	// 为 book-service 创建限流器（每秒 100 请求，突发 50）
+	bookLimiter := resilience.NewGRPCRateLimiter(resilience.RateLimiterConfig{Rate: 100, Burst: 50})
+
+	// 为 user-service 创建限流器（每秒 50 请求，突发 20）
+	userLimiter := resilience.NewGRPCRateLimiter(resilience.RateLimiterConfig{Rate: 50, Burst: 20})
+
+	// ========== 初始化 gRPC clients，使用 consul:/// 服务名 进行服务发现 ==========
+	// 拦截器链：Tracing → CircuitBreaker → Retry → RateLimiter
 	bookConn, err := grpc.NewClient(
 		"consul:///book-service",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(`{"loadBalancingConfig":[{"round_robin":{}}]}`),
+		grpc.WithChainUnaryInterceptor(
+			tracing.UnaryClientInterceptor(),
+			resilience.CircuitBreakerInterceptor(bookCB),
+			resilience.RetryInterceptor(retryCfg),
+			resilience.RateLimiterInterceptor(bookLimiter),
+		),
 	)
 	if err != nil {
 		logger.Fatal("failed to connect to book-service via consul", zap.Error(err))
@@ -114,6 +162,12 @@ func main() {
 		"consul:///user-service",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(`{"loadBalancingConfig":[{"round_robin":{}}]}`),
+		grpc.WithChainUnaryInterceptor(
+			tracing.UnaryClientInterceptor(),
+			resilience.CircuitBreakerInterceptor(userCB),
+			resilience.RetryInterceptor(retryCfg),
+			resilience.RateLimiterInterceptor(userLimiter),
+		),
 	)
 	if err != nil {
 		logger.Warn("failed to connect to user-service via consul (non-critical)", zap.Error(err))

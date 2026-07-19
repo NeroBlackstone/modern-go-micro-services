@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	bookv1 "modern-micro-services/gen/bookstore/book/v1"
-	"modern-micro-services/internal/tracing"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -19,11 +18,13 @@ type BookClient struct {
 	logger *zap.Logger
 }
 
-func NewBookClient(addr string, logger *zap.Logger) (*BookClient, error) {
-	conn, err := grpc.NewClient(addr,
+func NewBookClient(addr string, logger *zap.Logger, extraOpts ...grpc.DialOption) (*BookClient, error) {
+	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(tracing.UnaryClientInterceptor()),
-	)
+	}
+	opts = append(opts, extraOpts...)
+
+	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to book-service: %w", err)
 	}

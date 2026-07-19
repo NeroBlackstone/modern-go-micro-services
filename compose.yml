@@ -193,6 +193,12 @@ services:
       - "traefik.http.routers.user.rule=PathPrefix(`/api/v1/auth`) || PathPrefix(`/api/v1/user`)"
       - "traefik.http.routers.user.entrypoints=web"
       - "traefik.http.services.user.loadbalancer.server.port=8081"
+      # 限流中间件：每秒 50 请求，突发 20
+      - "traefik.http.middlewares.user-ratelimit.ratelimit.average=50"
+      - "traefik.http.middlewares.user-ratelimit.ratelimit.burst=20"
+      - "traefik.http.middlewares.user-ratelimit.ratelimit.period=1s"
+      # 应用中间件链
+      - "traefik.http.routers.user.middlewares=user-ratelimit"
     environment:
       - GIN_MODE=debug
     depends_on:
@@ -242,6 +248,17 @@ services:
       - "traefik.http.routers.order.rule=PathPrefix(`/api/v1/orders`) || PathPrefix(`/api/v1/reviews`)"
       - "traefik.http.routers.order.entrypoints=web"
       - "traefik.http.services.order.loadbalancer.server.port=8080"
+      # 限流中间件：每秒 100 请求，突发 50
+      - "traefik.http.middlewares.order-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.order-ratelimit.ratelimit.burst=50"
+      - "traefik.http.middlewares.order-ratelimit.ratelimit.period=1s"
+      # 熔断中间件：5xx 错误率超过 25% 时触发
+      - "traefik.http.middlewares.order-circuitbreaker.circuitbreaker.expression=ResponseCodeRatio(500, 600, 0, 600) > 0.25"
+      # 重试中间件：最多重试 3 次
+      - "traefik.http.middlewares.order-retry.retry.attempts=3"
+      - "traefik.http.middlewares.order-retry.retry.initialinterval=100ms"
+      # 应用中间件链
+      - "traefik.http.routers.order.middlewares=order-ratelimit,order-circuitbreaker,order-retry"
     environment:
       - GIN_MODE=debug
     depends_on:

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	userv1 "modern-micro-services/gen/bookstore/user/v1"
-	"modern-micro-services/internal/tracing"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -19,11 +18,13 @@ type UserClient struct {
 	logger *zap.Logger
 }
 
-func NewUserClient(addr string, logger *zap.Logger) (*UserClient, error) {
-	conn, err := grpc.NewClient(addr,
+func NewUserClient(addr string, logger *zap.Logger, extraOpts ...grpc.DialOption) (*UserClient, error) {
+	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(tracing.UnaryClientInterceptor()),
-	)
+	}
+	opts = append(opts, extraOpts...)
+
+	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to user-service: %w", err)
 	}
