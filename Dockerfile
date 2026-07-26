@@ -17,23 +17,10 @@ RUN go mod download
 COPY . .
 
 # 编译所有服务
-RUN CGO_ENABLED=0 GOOS=linux go build -o user-service-server ./cmd/user-service
 RUN CGO_ENABLED=0 GOOS=linux go build -o book-service-server ./cmd/book-service
 RUN CGO_ENABLED=0 GOOS=linux go build -o order-service-server ./cmd/order-service
-
-# ==================== 用户服务 ====================
-FROM alpine:3.19 AS user-service
-
-RUN apk --no-cache add ca-certificates tzdata
-
-WORKDIR /app
-
-COPY --from=builder /app/user-service-server .
-COPY --from=builder /app/configs/user-service.yaml ./configs/
-
-EXPOSE 9091 8081
-
-CMD ["./user-service-server"]
+RUN CGO_ENABLED=0 GOOS=linux go build -o hydra-login-consent-server ./cmd/hydra-login-consent
+RUN CGO_ENABLED=0 GOOS=linux go build -o oauth-client-demo-server ./cmd/oauth-client-demo
 
 # ==================== 图书服务 ====================
 FROM alpine:3.19 AS book-service
@@ -62,3 +49,29 @@ COPY --from=builder /app/configs/order-service.yaml ./configs/
 EXPOSE 8080
 
 CMD ["./order-service-server"]
+
+# ==================== Hydra Login/Consent 服务 ====================
+FROM alpine:3.19 AS hydra-login-consent
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+COPY --from=builder /app/hydra-login-consent-server .
+
+EXPOSE 3001
+
+CMD ["./hydra-login-consent-server"]
+
+# ==================== OAuth2 客户端演示 ====================
+FROM alpine:3.19 AS oauth-client-demo
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+COPY --from=builder /app/oauth-client-demo-server .
+
+EXPOSE 8082
+
+CMD ["./oauth-client-demo-server"]

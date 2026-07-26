@@ -1,0 +1,32 @@
+{
+  "$id": "https://bookstore.example.com/identity.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "用户身份 Schema",
+  "description": "定义 Ory Kratos 管理的用户身份数据结构",
+  "properties": {
+    "traits": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "电子邮箱",
+          "minLength": 3,
+          "maxLength": 100,
+          "ory.sh/sha256": false
+        },
+        "username": {
+          "type": "string",
+          "title": "用户名",
+          "minLength": 2,
+          "maxLength": 50
+        }
+      },
+      "required": ["email", "username"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["traits"],
+  "additionalProperties": false
+}

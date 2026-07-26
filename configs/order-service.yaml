@@ -22,6 +22,10 @@ jwt:
   secret: your-secret-key-change-in-production
   expire_hours: 72
 
+kratos:
+  public_url: "http://kratos:4433"
+  admin_url: "http://kratos:4434"
+
 tracing:
   endpoint: "tempo:4318"
 

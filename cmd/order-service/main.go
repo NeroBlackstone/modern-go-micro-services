@@ -117,28 +117,11 @@ func main() {
 		logger,
 	)
 
-	// 为 user-service 创建熔断器
-	userCB := resilience.NewCircuitBreaker(
-		resilience.CircuitBreakerConfig{
-			Name:        "user-service",
-			MaxRequests: 3,
-			Interval:    30 * time.Second,
-			Timeout:     10 * time.Second,
-			ReadyToTrip: func(counts gobreaker.Counts) bool {
-				return counts.ConsecutiveFailures > 5
-			},
-		},
-		logger,
-	)
-
 	// 重试配置
 	retryCfg := resilience.DefaultRetryConfig(logger)
 
 	// 为 book-service 创建限流器（每秒 100 请求，突发 50）
 	bookLimiter := resilience.NewGRPCRateLimiter(resilience.RateLimiterConfig{Rate: 100, Burst: 50})
-
-	// 为 user-service 创建限流器（每秒 50 请求，突发 20）
-	userLimiter := resilience.NewGRPCRateLimiter(resilience.RateLimiterConfig{Rate: 50, Burst: 20})
 
 	// ========== 初始化 gRPC clients，使用 consul:/// 服务名 进行服务发现 ==========
 	// 拦截器链：Tracing → CircuitBreaker → Retry → RateLimiter
@@ -157,24 +140,6 @@ func main() {
 		logger.Fatal("failed to connect to book-service via consul", zap.Error(err))
 	}
 	bookClient := client.NewBookClientFromConn(bookConn, logger)
-
-	userConn, err := grpc.NewClient(
-		"consul:///user-service",
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultServiceConfig(`{"loadBalancingConfig":[{"round_robin":{}}]}`),
-		grpc.WithChainUnaryInterceptor(
-			tracing.UnaryClientInterceptor(),
-			resilience.CircuitBreakerInterceptor(userCB),
-			resilience.RetryInterceptor(retryCfg),
-			resilience.RateLimiterInterceptor(userLimiter),
-		),
-	)
-	if err != nil {
-		logger.Warn("failed to connect to user-service via consul (non-critical)", zap.Error(err))
-	}
-	if userConn != nil {
-		defer userConn.Close()
-	}
 
 	// 初始化各层
 	orderRepo := repository.NewOrderRepository(db)
@@ -204,8 +169,10 @@ func main() {
 	v1 := r.Group("/api/v1")
 	{
 		// 订单相关（需要认证）
+		// 注意：认证现在由 Traefik + Oathkeeper 在网关层处理
+		// 后端服务只需读取 Oathkeeper 注入的 Authorization header
 		orders := v1.Group("/orders")
-		orders.Use(orderHandler.JWTAuth())
+		orders.Use(orderHandler.JWTAuth()) // 使用 Oathkeeper JWT 验证
 		{
 			orders.POST("", orderHandler.CreateOrder)
 			orders.GET("", orderHandler.ListOrders)

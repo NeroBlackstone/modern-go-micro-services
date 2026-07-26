@@ -3,23 +3,6 @@ name: bookstore
 services:
   # ==================== 基础设施服务 ====================
 
-  # PostgreSQL - 用户数据库
-  postgres-user:
-    image: postgres:18-alpine
-    container_name: bookstore-postgres-user
-    environment:
-      POSTGRES_USER: bookstore
-      POSTGRES_PASSWORD: bookstore123
-      POSTGRES_DB: user_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_user_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bookstore -d user_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # PostgreSQL - 图书数据库
   postgres-book:
@@ -107,6 +90,8 @@ services:
     depends_on:
       consul:
         condition: service_healthy
+      oathkeeper:
+        condition: service_started
 
   # Consul 服务发现
   consul:
@@ -121,6 +106,220 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # ==================== Ory 认证服务 ====================
+
+  # Ory Kratos PostgreSQL
+  postgres-kratos:
+    image: postgres:18-alpine
+    container_name: bookstore-postgres-kratos
+    environment:
+      POSTGRES_USER: kratos
+      POSTGRES_PASSWORD: kratos_secret
+      POSTGRES_DB: kratos
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_kratos_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kratos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kratos 数据库迁移（一次性执行）
+  kratos-migrate:
+    image: oryd/kratos:v26.2.0
+    command: migrate sql up -e --yes
+    environment:
+      - DSN=postgres://kratos:kratos_secret@postgres-kratos:5432/kratos?sslmode=disable
+    volumes:
+      - ./configs/kratos:/etc/config/kratos
+    depends_on:
+      postgres-kratos:
+        condition: service_healthy
+
+  # Ory Kratos - 身份管理服务器
+  kratos:
+    image: oryd/kratos:v26.2.0
+    command: serve -c /etc/config/kratos/kratos.yml --dev
+    environment:
+      - DSN=postgres://kratos:kratos_secret@postgres-kratos:5432/kratos?sslmode=disable
+    ports:
+      - "4433:4433" # 公共 API（登录/注册流程）
+      - "4434:4434" # 管理 API（用户管理）
+    volumes:
+      - ./configs/kratos:/etc/config/kratos
+    depends_on:
+      postgres-kratos:
+        condition: service_healthy
+      kratos-migrate:
+        condition: service_completed_successfully
+
+  # Ory Oathkeeper - API 认证代理
+  oathkeeper:
+    image: oryd/oathkeeper:v26.2.0
+    command: serve -c /etc/config/oathkeeper/oathkeeper.yml
+    ports:
+      - "4455:4455" # API + Decision API
+      - "4456:4456" # Proxy
+    volumes:
+      - ./configs/oathkeeper:/etc/config/oathkeeper
+    depends_on:
+      - kratos
+
+  # ==================== Ory Keto 权限控制服务 ====================
+
+  # Keto PostgreSQL（独立数据库）
+  postgres-keto:
+    image: postgres:18-alpine
+    container_name: bookstore-postgres-keto
+    environment:
+      POSTGRES_USER: keto
+      POSTGRES_PASSWORD: keto_secret
+      POSTGRES_DB: keto
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_keto_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keto"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Keto 数据库迁移（一次性执行）
+  keto-migrate:
+    image: oryd/keto:v26.2.0
+    command: migrate up -c /etc/config/keto/keto.yml
+    environment:
+      - DSN=postgres://keto:keto_secret@postgres-keto:5432/keto?sslmode=disable
+    volumes:
+      - ./configs/keto:/etc/config/keto
+    depends_on:
+      postgres-keto:
+        condition: service_healthy
+
+  # Ory Keto - 授权/权限控制服务
+  keto:
+    image: oryd/keto:v26.2.0
+    command: serve -c /etc/config/keto/keto.yml
+    environment:
+      - DSN=postgres://keto:keto_secret@postgres-keto:5432/keto?sslmode=disable
+    ports:
+      - "4466:4466" # Read API
+      - "4467:4467" # Write API
+      - "4468:4468" # Metrics API
+    volumes:
+      - ./configs/keto:/etc/config/keto
+    depends_on:
+      postgres-keto:
+        condition: service_healthy
+      keto-migrate:
+        condition: service_completed_successfully
+
+  # Keto 初始化容器 - 导入 relation tuples
+  keto-init:
+    image: oryd/keto:v26.2.0
+    working_dir: /etc/config/keto
+    environment:
+      - KETO_WRITE_REMOTE=keto:4467
+      - KETO_READ_REMOTE=keto:4466
+    volumes:
+      - ./configs/keto:/etc/config/keto
+    command:
+      - relation-tuple
+      - create
+      - -f
+      - ./relation-tuples
+      - --insecure-disable-transport-security
+    depends_on:
+      - keto
+
+  # ==================== Ory Hydra OAuth2 服务 ====================
+
+  # Hydra PostgreSQL（独立数据库）
+  postgres-hydra:
+    image: postgres:18-alpine
+    container_name: bookstore-postgres-hydra
+    environment:
+      POSTGRES_USER: hydra
+      POSTGRES_PASSWORD: hydra_secret
+      POSTGRES_DB: hydra
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_hydra_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hydra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Hydra 数据库迁移（一次性执行）
+  hydra-migrate:
+    image: oryd/hydra:v26.2.0
+    command: migrate sql -e --yes
+    environment:
+      - DSN=postgres://hydra:hydra_secret@postgres-hydra:5432/hydra?sslmode=disable
+    volumes:
+      - ./configs/hydra:/etc/config/hydra
+    depends_on:
+      postgres-hydra:
+        condition: service_healthy
+
+  # Ory Hydra - OAuth2 / OpenID Connect Provider
+  hydra:
+    image: oryd/hydra:v26.2.0
+    command: serve all -c /etc/config/hydra/hydra.yml --dev
+    environment:
+      - DSN=postgres://hydra:hydra_secret@postgres-hydra:5432/hydra?sslmode=disable
+    ports:
+      - "4444:4444" # 公共 API（OAuth2 端点）
+      - "4445:4445" # 管理 API（Client 管理）
+    volumes:
+      - ./configs/hydra:/etc/config/hydra
+    depends_on:
+      postgres-hydra:
+        condition: service_healthy
+      hydra-migrate:
+        condition: service_completed_successfully
+
+  # Hydra Login/Consent 服务（处理 OAuth2 登录和授权同意流程）
+  hydra-login-consent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: hydra-login-consent
+    container_name: bookstore-hydra-login-consent
+    ports:
+      - "3001:3001"
+    environment:
+      - HYDRA_ADMIN_URL=http://hydra:4445
+      - KRATOS_PUBLIC_URL=http://kratos:4433
+      - SERVER_PORT=3001
+    depends_on:
+      - hydra
+      - kratos
+
+  # OAuth2 客户端演示应用
+  oauth-client-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: oauth-client-demo
+    container_name: bookstore-oauth-client-demo
+    ports:
+      - "8082:8082"
+    environment:
+      - HYDRA_PUBLIC_URL=http://localhost:4444
+      - HYDRA_ADMIN_URL=http://hydra:4445
+      - CLIENT_ID=bookstore-web-client
+      - CLIENT_SECRET=change-me-in-production
+      - REDIRECT_URI=http://localhost:8082/callback
+      - SERVER_PORT=8082
+    depends_on:
+      - hydra
 
   # Grafana Tempo 分布式链路追踪
   tempo:
@@ -154,7 +353,6 @@ services:
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
     depends_on:
-      - user-service
       - book-service
       - order-service
 
@@ -175,39 +373,6 @@ services:
       - tempo
 
   # ==================== 微服务 ====================
-
-  # 用户服务 (gRPC :9091 + HTTP :8081)
-  user-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: user-service
-      args:
-        GOPROXY: https://goproxy.cn,direct
-    container_name: bookstore-user-service
-    ports:
-      - "9091:9091" # gRPC (内部通信 + 直连调试)
-      # HTTP :8081 通过 Traefik 暴露，不再直接映射 host 端口
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.user.rule=PathPrefix(`/api/v1/auth`) || PathPrefix(`/api/v1/user`)"
-      - "traefik.http.routers.user.entrypoints=web"
-      - "traefik.http.services.user.loadbalancer.server.port=8081"
-      # 限流中间件：每秒 50 请求，突发 20
-      - "traefik.http.middlewares.user-ratelimit.ratelimit.average=50"
-      - "traefik.http.middlewares.user-ratelimit.ratelimit.burst=20"
-      - "traefik.http.middlewares.user-ratelimit.ratelimit.period=1s"
-      # 应用中间件链
-      - "traefik.http.routers.user.middlewares=user-ratelimit"
-    environment:
-      - GIN_MODE=debug
-    depends_on:
-      postgres-user:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
-      tempo:
-        condition: service_started
 
   # 图书服务 (gRPC :9092 + Metrics :9093)
   book-service:
@@ -248,6 +413,10 @@ services:
       - "traefik.http.routers.order.rule=PathPrefix(`/api/v1/orders`) || PathPrefix(`/api/v1/reviews`)"
       - "traefik.http.routers.order.entrypoints=web"
       - "traefik.http.services.order.loadbalancer.server.port=8080"
+      # ForwardAuth 中间件：转发到 Oathkeeper 验证认证
+      - "traefik.http.middlewares.oathkeeper-auth.forwardauth.address=http://oathkeeper:4455/decisions"
+      - "traefik.http.middlewares.oathkeeper-auth.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.oathkeeper-auth.forwardauth.authResponseHeaders=Authorization"
       # 限流中间件：每秒 100 请求，突发 50
       - "traefik.http.middlewares.order-ratelimit.ratelimit.average=100"
       - "traefik.http.middlewares.order-ratelimit.ratelimit.burst=50"
@@ -257,8 +426,8 @@ services:
       # 重试中间件：最多重试 3 次
       - "traefik.http.middlewares.order-retry.retry.attempts=3"
       - "traefik.http.middlewares.order-retry.retry.initialinterval=100ms"
-      # 应用中间件链
-      - "traefik.http.routers.order.middlewares=order-ratelimit,order-circuitbreaker,order-retry"
+      # 应用中间件链：ForwardAuth → 限流 → 熔断 → 重试
+      - "traefik.http.routers.order.middlewares=oathkeeper-auth,order-ratelimit,order-circuitbreaker,order-retry"
     environment:
       - GIN_MODE=debug
     depends_on:
@@ -270,15 +439,17 @@ services:
         condition: service_healthy
       tempo:
         condition: service_started
-      user-service:
-        condition: service_started
       book-service:
+        condition: service_started
+      oathkeeper:
         condition: service_started
 
 volumes:
-  postgres_user_data:
   postgres_book_data:
   postgres_order_data:
+  postgres_kratos_data:
+  postgres_hydra_data:
+  postgres_keto_data:
   redis_data:
   rabbitmq_data:
   prometheus_data:

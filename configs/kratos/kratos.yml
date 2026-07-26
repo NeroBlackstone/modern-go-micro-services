@@ -1,0 +1,108 @@
+# Ory Kratos 身份管理服务器配置
+# 文档: https://www.ory.sh/docs/kratos/reference/configuration
+
+# 数据库连接（PostgreSQL）
+dsn: "postgres://kratos:kratos_secret@postgres-kratos:5432/kratos?sslmode=disable"
+
+# 自服务流程配置
+selfservice:
+  # 默认浏览器返回地址
+  default_browser_return_url: http://localhost:4455/
+
+  # 浏览器流程（UI 跳转）
+  flows:
+    # 登录流程
+    login:
+      ui_url: http://localhost:4455/login
+      lifespan: 720h  # 30 天会话有效期
+      before:
+        hooks: []
+      after:
+        hooks: []
+
+    # 注册流程
+    registration:
+      ui_url: http://localhost:4455/registration
+      enabled: true
+      before:
+        hooks: []
+      after:
+        hooks: []
+
+    # 设置流程（修改个人资料）
+    settings:
+      ui_url: http://localhost:4455/settings
+
+    # 邮箱验证流程
+    verification:
+      enabled: true
+      ui_url: http://localhost:4455/verification
+
+    # 账户恢复流程（忘记密码）
+    recovery:
+      enabled: true
+      ui_url: http://localhost:4455/recovery
+
+  # 认证方式配置
+  methods:
+    # 密码认证（核心）
+    password:
+      enabled: true
+
+    # 社交登录（OIDC）
+    oidc:
+      enabled: true
+      config:
+        providers:
+          # Google 登录（需要配置真实的 Client ID）
+          - id: google
+            provider: google
+            client_id: YOUR_GOOGLE_CLIENT_ID
+            client_secret: YOUR_GOOGLE_CLIENT_SECRET
+            mapper_url: file:///etc/config/kratos/oidc.google.jsonnet
+
+          # GitHub 登录（需要配置真实的 Client ID）
+          - id: github
+            provider: github
+            client_id: YOUR_GITHUB_CLIENT_ID
+            client_secret: YOUR_GITHUB_CLIENT_SECRET
+            mapper_url: file:///etc/config/kratos/oidc.github.jsonnet
+
+# 身份配置
+identity:
+  schemas:
+    - id: default
+      url: file:///etc/config/kratos/identity.schema.json
+
+# 服务器配置
+serve:
+  public:
+    port: 4433
+    host: 0.0.0.0
+    cors:
+      enabled: true
+      allowed_origins:
+        - http://localhost:4455
+        - http://localhost:80
+      allowed_methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+      allowed_headers:
+        - Authorization
+        - Content-Type
+        - X-Session-Token
+      allow_credentials: true
+  admin:
+    port: 4434
+    host: 0.0.0.0
+
+# 日志配置
+log:
+  level: info
+  format: json
+
+# 版本（必填）
+version: v0.13.0

@@ -1,0 +1,90 @@
+[
+  {
+    "id": "protected-order-routes",
+    "upstream": {
+      "url": "http://order-service:8080"
+    },
+    "match": {
+      "url": "<http://localhost(:[0-9]+)?/api/v1/orders|http://localhost(:[0-9]+)?/api/v1/orders/.*>",
+      "methods": ["GET", "POST", "PUT", "DELETE"]
+    },
+    "authenticators": [
+      { "handler": "cookie_session" },
+      { "handler": "bearer_token" }
+    ],
+    "authorizer": {
+      "handler": "keto_engine_acp_ory",
+      "config": {
+        "required_action": "Order:read",
+        "required_resource": "Order:*",
+        "subject": "{{ .Subject }}"
+      }
+    },
+    "mutators": [
+      { "handler": "id_token" }
+    ]
+  },
+  {
+    "id": "public-review-routes",
+    "upstream": {
+      "url": "http://order-service:8080"
+    },
+    "match": {
+      "url": "<http://localhost(:[0-9]+)?/api/v1/reviews/book/.*>",
+      "methods": ["GET"]
+    },
+    "authenticators": [
+      { "handler": "noop" }
+    ],
+    "authorizer": {
+      "handler": "allow"
+    },
+    "mutators": [
+      { "handler": "noop" }
+    ]
+  },
+  {
+    "id": "protected-review-routes",
+    "upstream": {
+      "url": "http://order-service:8080"
+    },
+    "match": {
+      "url": "<http://localhost(:[0-9]+)?/api/v1/reviews>",
+      "methods": ["POST"]
+    },
+    "authenticators": [
+      { "handler": "cookie_session" },
+      { "handler": "bearer_token" }
+    ],
+    "authorizer": {
+      "handler": "keto_engine_acp_ory",
+      "config": {
+        "required_action": "Review:write",
+        "required_resource": "Review:*",
+        "subject": "{{ .Subject }}"
+      }
+    },
+    "mutators": [
+      { "handler": "id_token" }
+    ]
+  },
+  {
+    "id": "order-health-check",
+    "upstream": {
+      "url": "http://order-service:8080"
+    },
+    "match": {
+      "url": "<http://localhost(:[0-9]+)?/health>",
+      "methods": ["GET"]
+    },
+    "authenticators": [
+      { "handler": "noop" }
+    ],
+    "authorizer": {
+      "handler": "allow"
+    },
+    "mutators": [
+      { "handler": "noop" }
+    ]
+  }
+]

@@ -11,6 +11,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	RabbitMQ RabbitMQConfig `mapstructure:"rabbitmq"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
+	Kratos   KratosConfig   `mapstructure:"kratos"`
 	Tracing  TracingConfig  `mapstructure:"tracing"`
 	Log      LogConfig      `mapstructure:"log"`
 	Consul   ConsulConfig   `mapstructure:"consul"`
@@ -54,6 +55,11 @@ type LogConfig struct {
 
 type ConsulConfig struct {
 	Addr string `mapstructure:"addr"`
+}
+
+type KratosConfig struct {
+	PublicURL string `mapstructure:"public_url"`
+	AdminURL  string `mapstructure:"admin_url"`
 }
 
 func (r *RabbitMQConfig) AmqpURL() string {

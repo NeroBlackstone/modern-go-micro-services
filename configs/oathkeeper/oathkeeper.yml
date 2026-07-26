@@ -1,0 +1,87 @@
+# Ory Oathkeeper - API 认证代理配置
+# 文档: https://www.ory.sh/oathkeeper/docs/configuration
+
+version: "v0.40.9"
+
+serve:
+  proxy:
+    port: 4456
+  api:
+    port: 4455
+
+errors:
+  fallback:
+    - json
+  handlers:
+    json:
+      enabled: true
+      config:
+        verbose: true
+    redirect:
+      enabled: true
+      config:
+        to: http://localhost:4455/login
+
+access_rules:
+  repositories:
+    - file:///etc/config/oathkeeper/rules.json
+
+authenticators:
+  cookie_session:
+    enabled: true
+    config:
+      check_session_url: http://kratos:4433/sessions/whoami
+      preserve_path: true
+      subject_from: identity.id
+      extra_from: identity.traits
+      only:
+        - ory_kratos_session
+
+  bearer_token:
+    enabled: true
+    config:
+      check_session_url: http://kratos:4433/sessions/whoami
+      preserve_path: true
+      subject_from: identity.id
+      extra_from: identity.traits
+
+  noop:
+    enabled: true
+
+authorizers:
+  allow:
+    enabled: true
+  deny:
+    enabled: true
+  keto_engine_acp_ory:
+    enabled: true
+    config:
+      base_url: http://keto:4466
+      flavor: exact
+      required_action: ""
+      required_resource: ""
+
+mutators:
+  id_token:
+    enabled: true
+    config:
+      claims: |
+        {
+          "iss": "https://bookstore.example.com",
+          "aud": "bookstore-api",
+          "email": "{{ print .Extra.email }}",
+          "username": "{{ print .Extra.username }}"
+        }
+      jwks_url: file:///etc/config/oathkeeper/rsa_private.jwks.json
+      issuer_url: http://localhost:4455
+
+  header:
+    enabled: true
+    config:
+      headers:
+        X-User-ID: "{{ print .Extra.id }}"
+        X-User-Email: "{{ print .Extra.email }}"
+        X-User-Username: "{{ print .Extra.username }}"
+
+  noop:
+    enabled: true
