@@ -314,8 +314,8 @@ services:
     environment:
       - HYDRA_PUBLIC_URL=http://localhost:4444
       - HYDRA_ADMIN_URL=http://hydra:4445
-      - CLIENT_ID=bookstore-web-client
-      - CLIENT_SECRET=change-me-in-production
+      - CLIENT_ID=85d6ecbc-4e57-43cf-979e-41dc533b395a
+      - CLIENT_SECRET=2MzsKmDleNiN-yz37LsHUrT0LX
       - REDIRECT_URI=http://localhost:8082/callback
       - SERVER_PORT=8082
     depends_on:

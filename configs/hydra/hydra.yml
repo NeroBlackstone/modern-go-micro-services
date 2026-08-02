@@ -1,0 +1,66 @@
+# Ory Hydra - OAuth2 / OpenID Connect Provider 配置
+# 文档: https://www.ory.sh/hydra/docs/reference/configuration
+# 版本: v26.2.0
+
+# 数据库连接（PostgreSQL）
+dsn: "postgres://hydra:hydra_secret@postgres-hydra:5432/hydra?sslmode=disable"
+
+# Token 有效期（全局默认值，创建 Client 时可覆盖）
+ttl:
+  access_token: 1h
+  refresh_token: 720h           # 30 天
+  id_token: 1h
+  auth_code: 10m
+
+# 服务配置
+serve:
+  # 公共 API（OAuth2 端点：/oauth2/auth, /oauth2/token, /.well-known/openid-configuration）
+  public:
+    port: 4444
+    host: 0.0.0.0
+    cors:
+      enabled: true
+      allow_origins:
+        - http://localhost:8082
+        - http://localhost:3001
+      allow_methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allow_headers:
+        - Authorization
+        - Content-Type
+        - X-Request-ID
+      allow_credentials: true
+
+  # 管理 API（创建/删除 OAuth2 Client 等）
+  admin:
+    port: 4445
+    host: 0.0.0.0
+
+# URL 配置
+urls:
+  # 自身公共 URL（issuer，必须与访问 token 的 iss 一致）
+  self:
+    issuer: http://localhost:4444
+
+  # 登录/Consent/Logout Provider URL
+  login: http://hydra-login-consent:3001/login
+  consent: http://hydra-login-consent:3001/consent
+  logout: http://hydra-login-consent:3001/logout
+  post_logout_redirect: http://localhost:8082/
+
+# 系统密钥（用于加密，生产环境必须更改）
+secrets:
+  system:
+    - this-is-a-very-long-and-secure-secret-key-for-development-only
+
+# 日志配置
+log:
+  level: info
+  format: json
+
+# 版本
+version: v26.2.0
