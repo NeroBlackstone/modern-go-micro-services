@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"modern-micro-services/internal/order/config"
 	"modern-micro-services/internal/order/model"
 	"modern-micro-services/internal/order/service"
+	"modern-micro-services/internal/serviceauth"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -84,6 +86,7 @@ func (h *OrderHandler) JWTAuth() gin.HandlerFunc {
 		// user_id: 使用 Kratos identity ID（string 转 uint 用于兼容现有代码）
 		// 注意：Kratos 使用 UUID 作为 identity ID，这里简化处理
 		// 生产环境应使用字符串 ID
+		var userIDStr string
 		if claims.Sub != "" {
 			// 尝试将 Kratos ID 转换为 uint（如果可能）
 			if id, err := strconv.ParseUint(claims.Sub, 10, 32); err == nil {
@@ -93,10 +96,16 @@ func (h *OrderHandler) JWTAuth() gin.HandlerFunc {
 				// 生产环境应修改 User 模型使用 string ID
 				c.Set("user_id", uint(1))
 			}
+			userIDStr = claims.Sub
 		}
 		c.Set("email", claims.Email)
 		c.Set("username", claims.Username)
 		c.Set("kratos_id", claims.Sub) // 保留原始 Kratos identity ID
+
+		// 将用户信息注入到请求 context，供下游服务间认证使用
+		ctx := context.WithValue(c.Request.Context(), serviceauth.CallerUserKey, userIDStr)
+		ctx = context.WithValue(ctx, serviceauth.CallerEmailKey, claims.Email)
+		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
 	}

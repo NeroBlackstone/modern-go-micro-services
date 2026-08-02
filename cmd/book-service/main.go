@@ -20,6 +20,7 @@ import (
 	redispkg "modern-micro-services/internal/book/redis"
 	"modern-micro-services/internal/discovery"
 	"modern-micro-services/internal/metrics"
+	"modern-micro-services/internal/serviceauth"
 	"modern-micro-services/internal/tracing"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -78,7 +79,13 @@ func main() {
 	bookSvc := service.NewBookService(bookRepo)
 	grpcHandler := handler.NewGRPCHandler(bookSvc)
 
-	grpcServer, err := server.NewGRPCServer(grpcHandler, cfg.Server.GRPCPort, logger)
+	// 初始化服务间认证配置
+	serviceAuthCfg := &serviceauth.Config{
+		SharedSecret: cfg.ServiceAuth.SharedSecret,
+		ServiceName:  cfg.ServiceAuth.ServiceName,
+	}
+
+	grpcServer, err := server.NewGRPCServer(grpcHandler, cfg.Server.GRPCPort, logger, serviceAuthCfg)
 	if err != nil {
 		logger.Fatal("failed to create gRPC server", zap.Error(err))
 	}

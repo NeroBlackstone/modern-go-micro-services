@@ -19,6 +19,10 @@ redis:
   password: ""
   db: 0
 
+service_auth:
+  shared_secret: "${SERVICE_AUTH_SECRET}"
+  service_name: "book-service"
+
 tracing:
   endpoint: "tempo:4318"
 

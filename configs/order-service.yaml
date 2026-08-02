@@ -26,6 +26,12 @@ kratos:
   public_url: "http://kratos:4433"
   admin_url: "http://kratos:4434"
 
+service_auth:
+  shared_secret: "${SERVICE_AUTH_SECRET}"
+  service_name: "order-service"
+  target_service: "book-service"
+  ttl: "5m"
+
 tracing:
   endpoint: "tempo:4318"
 

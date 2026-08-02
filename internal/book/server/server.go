@@ -6,6 +6,7 @@ import (
 
 	bookv1 "modern-micro-services/gen/bookstore/book/v1"
 	"modern-micro-services/internal/book/handler"
+	"modern-micro-services/internal/serviceauth"
 	"modern-micro-services/internal/tracing"
 
 	"go.uber.org/zap"
@@ -18,7 +19,7 @@ type GRPCServer struct {
 	logger     *zap.Logger
 }
 
-func NewGRPCServer(grpcHandler *handler.GRPCHandler, port int, logger *zap.Logger) (*GRPCServer, error) {
+func NewGRPCServer(grpcHandler *handler.GRPCHandler, port int, logger *zap.Logger, serviceAuthCfg *serviceauth.Config) (*GRPCServer, error) {
 	addr := fmt.Sprintf(":%d", port)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -26,7 +27,10 @@ func NewGRPCServer(grpcHandler *handler.GRPCHandler, port int, logger *zap.Logge
 	}
 
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(tracing.UnaryServerInterceptor()),
+		grpc.ChainUnaryInterceptor(
+			tracing.UnaryServerInterceptor(),
+			serviceauth.UnaryServerInterceptor(serviceAuthCfg, logger),
+		),
 	)
 	bookv1.RegisterBookServiceServer(grpcServer, grpcHandler)
 

@@ -58,7 +58,7 @@ func (s *orderService) Create(ctx context.Context, userID uint, req *model.Creat
 	}
 
 	// gRPC 批量获取图书信息
-	books, err := s.bookClient.GetBooks(bookIDs)
+	books, err := s.bookClient.GetBooks(ctx, bookIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get books: %w", err)
 	}
@@ -113,14 +113,14 @@ func (s *orderService) Create(ctx context.Context, userID uint, req *model.Creat
 
 	// ========== Saga Step 2: gRPC 扣减库存 ==========
 	for _, item := range req.Items {
-		if err := s.bookClient.DeductStock(item.BookID, item.Quantity); err != nil {
+		if err := s.bookClient.DeductStock(ctx, item.BookID, item.Quantity); err != nil {
 			s.logger.Error("failed to deduct stock, compensating...",
 				zap.Uint("book_id", item.BookID),
 				zap.Error(err),
 			)
 
 			// ========== Saga Step 3 (失败): 补偿 —— 恢复已扣减的库存 + 取消订单 ==========
-			s.compensate(order, req.Items)
+			s.compensate(ctx, order, req.Items)
 			return nil, fmt.Errorf("failed to deduct stock: %w", err)
 		}
 	}
@@ -147,10 +147,10 @@ func (s *orderService) Create(ctx context.Context, userID uint, req *model.Creat
 }
 
 // compensate Saga 补偿逻辑：恢复库存 + 取消订单
-func (s *orderService) compensate(order *model.Order, items []model.OrderItemRequest) {
+func (s *orderService) compensate(ctx context.Context, order *model.Order, items []model.OrderItemRequest) {
 	// 恢复已扣减的库存
 	for _, item := range items {
-		if err := s.bookClient.RestoreStock(item.BookID, item.Quantity); err != nil {
+		if err := s.bookClient.RestoreStock(ctx, item.BookID, item.Quantity); err != nil {
 			s.logger.Error("CRITICAL: failed to restore stock during compensation",
 				zap.Uint("order_id", order.ID),
 				zap.Uint("book_id", item.BookID),

@@ -7,14 +7,15 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	RabbitMQ RabbitMQConfig `mapstructure:"rabbitmq"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Kratos   KratosConfig   `mapstructure:"kratos"`
-	Tracing  TracingConfig  `mapstructure:"tracing"`
-	Log      LogConfig      `mapstructure:"log"`
-	Consul   ConsulConfig   `mapstructure:"consul"`
+	Server      ServerConfig       `mapstructure:"server"`
+	Database    DatabaseConfig     `mapstructure:"database"`
+	RabbitMQ    RabbitMQConfig     `mapstructure:"rabbitmq"`
+	JWT         JWTConfig          `mapstructure:"jwt"`
+	Kratos      KratosConfig       `mapstructure:"kratos"`
+	ServiceAuth ServiceAuthConfig  `mapstructure:"service_auth"`
+	Tracing     TracingConfig      `mapstructure:"tracing"`
+	Log         LogConfig          `mapstructure:"log"`
+	Consul      ConsulConfig       `mapstructure:"consul"`
 }
 
 type TracingConfig struct {
@@ -60,6 +61,13 @@ type ConsulConfig struct {
 type KratosConfig struct {
 	PublicURL string `mapstructure:"public_url"`
 	AdminURL  string `mapstructure:"admin_url"`
+}
+
+type ServiceAuthConfig struct {
+	SharedSecret  string `mapstructure:"shared_secret"`
+	ServiceName   string `mapstructure:"service_name"`
+	TargetService string `mapstructure:"target_service"`
+	TTL           string `mapstructure:"ttl"`
 }
 
 func (r *RabbitMQConfig) AmqpURL() string {

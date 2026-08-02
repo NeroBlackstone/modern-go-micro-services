@@ -46,8 +46,8 @@ func NewBookClientFromConn(conn *grpc.ClientConn, logger *zap.Logger) *BookClien
 }
 
 // GetBook 获取图书信息
-func (c *BookClient) GetBook(bookID uint) (*bookv1.GetBookResponse, error) {
-	resp, err := c.client.GetBook(context.Background(), &bookv1.GetBookRequest{
+func (c *BookClient) GetBook(ctx context.Context, bookID uint) (*bookv1.GetBookResponse, error) {
+	resp, err := c.client.GetBook(ctx, &bookv1.GetBookRequest{
 		Id: uint32(bookID),
 	})
 	if err != nil {
@@ -57,13 +57,13 @@ func (c *BookClient) GetBook(bookID uint) (*bookv1.GetBookResponse, error) {
 }
 
 // GetBooks 批量获取图书
-func (c *BookClient) GetBooks(bookIDs []uint) ([]*bookv1.GetBookResponse, error) {
+func (c *BookClient) GetBooks(ctx context.Context, bookIDs []uint) ([]*bookv1.GetBookResponse, error) {
 	ids := make([]uint32, len(bookIDs))
 	for i, id := range bookIDs {
 		ids[i] = uint32(id)
 	}
 
-	resp, err := c.client.GetBooks(context.Background(), &bookv1.GetBooksRequest{
+	resp, err := c.client.GetBooks(ctx, &bookv1.GetBooksRequest{
 		Ids: ids,
 	})
 	if err != nil {
@@ -73,8 +73,8 @@ func (c *BookClient) GetBooks(bookIDs []uint) ([]*bookv1.GetBookResponse, error)
 }
 
 // DeductStock 扣减库存
-func (c *BookClient) DeductStock(bookID uint, quantity int) error {
-	resp, err := c.client.DeductStock(context.Background(), &bookv1.DeductStockRequest{
+func (c *BookClient) DeductStock(ctx context.Context, bookID uint, quantity int) error {
+	resp, err := c.client.DeductStock(ctx, &bookv1.DeductStockRequest{
 		BookId:   uint32(bookID),
 		Quantity: int32(quantity),
 	})
@@ -88,8 +88,8 @@ func (c *BookClient) DeductStock(bookID uint, quantity int) error {
 }
 
 // RestoreStock 恢复库存（Saga 补偿）
-func (c *BookClient) RestoreStock(bookID uint, quantity int) error {
-	resp, err := c.client.RestoreStock(context.Background(), &bookv1.RestoreStockRequest{
+func (c *BookClient) RestoreStock(ctx context.Context, bookID uint, quantity int) error {
+	resp, err := c.client.RestoreStock(ctx, &bookv1.RestoreStockRequest{
 		BookId:   uint32(bookID),
 		Quantity: int32(quantity),
 	})

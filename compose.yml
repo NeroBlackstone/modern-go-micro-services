@@ -405,6 +405,7 @@ services:
       - "9093:9093" # Prometheus metrics
     environment:
       - GIN_MODE=debug
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-super-secret-key-change-in-production}
     depends_on:
       postgres-book:
         condition: service_healthy
@@ -447,6 +448,7 @@ services:
       - "traefik.http.routers.order.middlewares=oathkeeper-auth,order-ratelimit,order-circuitbreaker,order-retry"
     environment:
       - GIN_MODE=debug
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-super-secret-key-change-in-production}
     depends_on:
       postgres-order:
         condition: service_healthy

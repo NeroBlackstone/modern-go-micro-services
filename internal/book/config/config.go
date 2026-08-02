@@ -7,12 +7,13 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Tracing  TracingConfig  `mapstructure:"tracing"`
-	Log      LogConfig      `mapstructure:"log"`
-	Consul   ConsulConfig   `mapstructure:"consul"`
+	Server      ServerConfig       `mapstructure:"server"`
+	Database    DatabaseConfig     `mapstructure:"database"`
+	Redis       RedisConfig        `mapstructure:"redis"`
+	ServiceAuth ServiceAuthConfig  `mapstructure:"service_auth"`
+	Tracing     TracingConfig      `mapstructure:"tracing"`
+	Log         LogConfig          `mapstructure:"log"`
+	Consul      ConsulConfig       `mapstructure:"consul"`
 }
 
 type TracingConfig struct {
@@ -49,6 +50,11 @@ type LogConfig struct {
 
 type ConsulConfig struct {
 	Addr string `mapstructure:"addr"`
+}
+
+type ServiceAuthConfig struct {
+	SharedSecret string `mapstructure:"shared_secret"`
+	ServiceName  string `mapstructure:"service_name"`
 }
 
 func (d *DatabaseConfig) DSN() string {

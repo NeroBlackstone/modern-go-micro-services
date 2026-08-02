@@ -17,6 +17,7 @@ import (
 	"modern-micro-services/internal/order/service"
 	rabbitmqpkg "modern-micro-services/internal/order/rabbitmq"
 	"modern-micro-services/internal/resilience"
+	"modern-micro-services/internal/serviceauth"
 	"modern-micro-services/internal/tracing"
 
 	"github.com/gin-gonic/gin"
@@ -123,14 +124,27 @@ func main() {
 	// 为 book-service 创建限流器（每秒 100 请求，突发 50）
 	bookLimiter := resilience.NewGRPCRateLimiter(resilience.RateLimiterConfig{Rate: 100, Burst: 50})
 
+	// ========== 初始化服务间认证 ==========
+	serviceAuthTTL, err := time.ParseDuration(cfg.ServiceAuth.TTL)
+	if err != nil {
+		serviceAuthTTL = 5 * time.Minute
+	}
+	serviceAuthCfg := &serviceauth.Config{
+		SharedSecret:  cfg.ServiceAuth.SharedSecret,
+		ServiceName:   cfg.ServiceAuth.ServiceName,
+		TargetService: cfg.ServiceAuth.TargetService,
+		TTL:           serviceAuthTTL,
+	}
+
 	// ========== 初始化 gRPC clients，使用 consul:/// 服务名 进行服务发现 ==========
-	// 拦截器链：Tracing → CircuitBreaker → Retry → RateLimiter
+	// 拦截器链：Tracing → ServiceAuth → CircuitBreaker → Retry → RateLimiter
 	bookConn, err := grpc.NewClient(
 		"consul:///book-service",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(`{"loadBalancingConfig":[{"round_robin":{}}]}`),
 		grpc.WithChainUnaryInterceptor(
 			tracing.UnaryClientInterceptor(),
+			serviceauth.UnaryClientInterceptor(serviceAuthCfg, logger),
 			resilience.CircuitBreakerInterceptor(bookCB),
 			resilience.RetryInterceptor(retryCfg),
 			resilience.RateLimiterInterceptor(bookLimiter),
