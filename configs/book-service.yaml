@@ -23,6 +23,11 @@ service_auth:
   shared_secret: "${SERVICE_AUTH_SECRET}"
   service_name: "book-service"
 
+vault:
+  addr: "${VAULT_ADDR}"
+  kv_path: "${VAULT_KV_PATH}"
+  enabled: true
+
 tracing:
   endpoint: "tempo:4318"
 

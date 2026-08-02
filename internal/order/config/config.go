@@ -13,6 +13,7 @@ type Config struct {
 	JWT         JWTConfig          `mapstructure:"jwt"`
 	Kratos      KratosConfig       `mapstructure:"kratos"`
 	ServiceAuth ServiceAuthConfig  `mapstructure:"service_auth"`
+	Vault       VaultConfig        `mapstructure:"vault"`
 	Tracing     TracingConfig      `mapstructure:"tracing"`
 	Log         LogConfig          `mapstructure:"log"`
 	Consul      ConsulConfig       `mapstructure:"consul"`
@@ -68,6 +69,12 @@ type ServiceAuthConfig struct {
 	ServiceName   string `mapstructure:"service_name"`
 	TargetService string `mapstructure:"target_service"`
 	TTL           string `mapstructure:"ttl"`
+}
+
+type VaultConfig struct {
+	Addr     string `mapstructure:"addr"`
+	KVPath   string `mapstructure:"kv_path"`
+	Enabled  bool   `mapstructure:"enabled"`
 }
 
 func (r *RabbitMQConfig) AmqpURL() string {

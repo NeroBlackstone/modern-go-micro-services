@@ -29,6 +29,11 @@ kratos:
 tracing:
   endpoint: "tempo:4318"
 
+vault:
+  addr: "${VAULT_ADDR}"
+  kv_path: "${VAULT_KV_PATH}"
+  enabled: true
+
 log:
   level: info
 

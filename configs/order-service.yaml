@@ -32,6 +32,11 @@ service_auth:
   target_service: "book-service"
   ttl: "5m"
 
+vault:
+  addr: "${VAULT_ADDR}"
+  kv_path: "${VAULT_KV_PATH}"
+  enabled: true
+
 tracing:
   endpoint: "tempo:4318"
 

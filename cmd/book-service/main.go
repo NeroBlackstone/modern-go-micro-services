@@ -22,6 +22,7 @@ import (
 	"modern-micro-services/internal/metrics"
 	"modern-micro-services/internal/serviceauth"
 	"modern-micro-services/internal/tracing"
+	"modern-micro-services/internal/vaultclient"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -42,6 +43,30 @@ func main() {
 		logger, _ = zap.NewProduction()
 	}
 	defer logger.Sync()
+
+	// ========== Vault 密钥管理 ==========
+	vaultClient := vaultclient.NewClientFromEnv()
+	if vaultClient != nil {
+		logger.Info("vault client connected, overlaying secrets")
+		kvPath := os.Getenv("VAULT_KV_PATH")
+		// 从 Vault 覆盖数据库配置
+		vaultclient.OverlayDatabaseConfig(
+			vaultClient,
+			kvPath,
+			&cfg.Database.Host,
+			&cfg.Database.Port,
+			&cfg.Database.User,
+			&cfg.Database.Password,
+			&cfg.Database.DBName,
+			logger,
+		)
+		// 从 Vault 覆盖服务间认证密钥
+		if secrets, err := vaultclient.GetKVSecret(vaultClient, "secret/data/service-auth"); err == nil {
+			vaultclient.OverlayString(secrets, "shared_secret", &cfg.ServiceAuth.SharedSecret)
+		}
+	} else {
+		logger.Info("vault not available, using local config")
+	}
 
 	// 初始化链路追踪（Tempo + OpenTelemetry）
 	_, tracingShutdown := tracing.InitTracing("book-service", cfg.Tracing.Endpoint)

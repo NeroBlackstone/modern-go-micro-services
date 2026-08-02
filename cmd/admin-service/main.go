@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"modern-micro-services/internal/admin/handler"
@@ -14,6 +15,7 @@ import (
 	"modern-micro-services/internal/order/model"
 	"modern-micro-services/internal/order/repository"
 	"modern-micro-services/internal/tracing"
+	"modern-micro-services/internal/vaultclient"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -35,6 +37,30 @@ func main() {
 		logger, _ = zap.NewProduction()
 	}
 	defer logger.Sync()
+
+	// ========== Vault 密钥管理 ==========
+	vaultClient := vaultclient.NewClientFromEnv()
+	if vaultClient != nil {
+		logger.Info("vault client connected, overlaying secrets")
+		kvPath := os.Getenv("VAULT_KV_PATH")
+		// 从 Vault 覆盖数据库配置
+		vaultclient.OverlayDatabaseConfig(
+			vaultClient,
+			kvPath,
+			&cfg.Database.Host,
+			&cfg.Database.Port,
+			&cfg.Database.User,
+			&cfg.Database.Password,
+			&cfg.Database.DBName,
+			logger,
+		)
+		// 从 Vault 覆盖 JWT 密钥
+		if secrets, err := vaultclient.GetKVSecret(vaultClient, "secret/data/jwt"); err == nil {
+			vaultclient.OverlayString(secrets, "secret", &cfg.JWT.Secret)
+		}
+	} else {
+		logger.Info("vault not available, using local config")
+	}
 
 	// 初始化链路追踪
 	_, tracingShutdown := tracing.InitTracing("admin-service", cfg.Tracing.Endpoint)

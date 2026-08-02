@@ -11,6 +11,7 @@ type Config struct {
 	Database    DatabaseConfig     `mapstructure:"database"`
 	Redis       RedisConfig        `mapstructure:"redis"`
 	ServiceAuth ServiceAuthConfig  `mapstructure:"service_auth"`
+	Vault       VaultConfig        `mapstructure:"vault"`
 	Tracing     TracingConfig      `mapstructure:"tracing"`
 	Log         LogConfig          `mapstructure:"log"`
 	Consul      ConsulConfig       `mapstructure:"consul"`
@@ -55,6 +56,12 @@ type ConsulConfig struct {
 type ServiceAuthConfig struct {
 	SharedSecret string `mapstructure:"shared_secret"`
 	ServiceName  string `mapstructure:"service_name"`
+}
+
+type VaultConfig struct {
+	Addr     string `mapstructure:"addr"`
+	KVPath   string `mapstructure:"kv_path"`
+	Enabled  bool   `mapstructure:"enabled"`
 }
 
 func (d *DatabaseConfig) DSN() string {
