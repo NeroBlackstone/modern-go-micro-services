@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ory/keto/master/.schema/config.schema.json
+# Ory Keto - 授权/权限控制服务
+# 文档: https://www.ory.sh/keto/docs
+
+# 数据库连接（PostgreSQL）
+dsn: "postgres://keto:keto_secret@postgres-keto:5432/keto?sslmode=disable"
+
+# 服务器配置
+serve:
+  # Read API（REST，含健康检查 + CORS）
+  read:
+    port: 4466
+    host: 0.0.0.0
+    cors:
+      enabled: true
+      allowed_origins:
+        - http://localhost:4455
+        - http://localhost:8083
+      allowed_methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+      allowed_headers:
+        - Authorization
+        - Content-Type
+      allow_credentials: true
+
+  # Write API（供其他服务写入 relation tuple）
+  write:
+    port: 4467
+    host: 0.0.0.0
+
+  # Metrics API（监控指标）
+  metrics:
+    port: 4468
+    host: 0.0.0.0
+
+# Namespace 配置 - 使用 OPL (Ory Permission Language) 定义
+namespaces:
+  location: file:///etc/config/keto/namespaces.keto.ts
+
+# 日志配置
+log:
+  level: info
+  format: json

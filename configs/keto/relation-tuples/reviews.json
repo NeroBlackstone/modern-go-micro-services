@@ -1,0 +1,22 @@
+[
+  {
+    "namespace": "Review",
+    "object": "*",
+    "relation": "managers",
+    "subject_set": {
+      "namespace": "Role",
+      "object": "admin",
+      "relation": "members"
+    }
+  },
+  {
+    "namespace": "Review",
+    "object": "*",
+    "relation": "writers",
+    "subject_set": {
+      "namespace": "Group",
+      "object": "users",
+      "relation": "members"
+    }
+  }
+]

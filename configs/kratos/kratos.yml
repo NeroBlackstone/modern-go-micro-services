@@ -27,7 +27,15 @@ selfservice:
       before:
         hooks: []
       after:
-        hooks: []
+        password:
+          hooks:
+            - hook: web_hook
+              config:
+                url: http://webhook:8080/webhooks/registration
+                method: POST
+                body: base64://ZnVuY3Rpb24oY3R4KSB7CiAgaWRlbnRpdHk6IGN0eC5pZGVudGl0eQp9Cg==
+                response:
+                  ignore: true
 
     # 设置流程（修改个人资料）
     settings:
@@ -73,6 +81,7 @@ identity:
   schemas:
     - id: default
       url: file:///etc/config/kratos/identity.schema.json
+  default_schema_id: default
 
 # 服务器配置
 serve:

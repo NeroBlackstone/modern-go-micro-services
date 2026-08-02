@@ -14,7 +14,14 @@
           "title": "电子邮箱",
           "minLength": 3,
           "maxLength": 100,
-          "ory.sh/sha256": false
+          "ory.sh/sha256": false,
+          "ory.sh/kratos": {
+            "credentials": {
+              "password": {
+                "identifier": true
+              }
+            }
+          }
         },
         "username": {
           "type": "string",

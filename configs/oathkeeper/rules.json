@@ -69,6 +69,31 @@
     ]
   },
   {
+    "id": "admin-order-routes",
+    "upstream": {
+      "url": "http://admin-service:8084"
+    },
+    "match": {
+      "url": "<http://localhost(:[0-9]+)?/api/v1/admin/orders/.*>",
+      "methods": ["PUT"]
+    },
+    "authenticators": [
+      { "handler": "cookie_session" },
+      { "handler": "bearer_token" }
+    ],
+    "authorizer": {
+      "handler": "keto_engine_acp_ory",
+      "config": {
+        "required_action": "Order:manage",
+        "required_resource": "Order:*",
+        "subject": "{{ .Subject }}"
+      }
+    },
+    "mutators": [
+      { "handler": "id_token" }
+    ]
+  },
+  {
     "id": "order-health-check",
     "upstream": {
       "url": "http://order-service:8080"

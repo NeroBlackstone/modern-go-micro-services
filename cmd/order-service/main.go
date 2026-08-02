@@ -177,7 +177,6 @@ func main() {
 			orders.POST("", orderHandler.CreateOrder)
 			orders.GET("", orderHandler.ListOrders)
 			orders.GET("/:id", orderHandler.GetOrder)
-			orders.PUT("/:id/status", orderHandler.UpdateOrderStatus)
 		}
 
 		// 评价相关

@@ -1,0 +1,22 @@
+[
+  {
+    "namespace": "Order",
+    "object": "*",
+    "relation": "managers",
+    "subject_set": {
+      "namespace": "Role",
+      "object": "admin",
+      "relation": "members"
+    }
+  },
+  {
+    "namespace": "Order",
+    "object": "*",
+    "relation": "viewers",
+    "subject_set": {
+      "namespace": "Group",
+      "object": "users",
+      "relation": "members"
+    }
+  }
+]

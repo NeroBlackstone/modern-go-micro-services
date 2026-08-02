@@ -21,6 +21,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o book-service-server ./cmd/book-service
 RUN CGO_ENABLED=0 GOOS=linux go build -o order-service-server ./cmd/order-service
 RUN CGO_ENABLED=0 GOOS=linux go build -o hydra-login-consent-server ./cmd/hydra-login-consent
 RUN CGO_ENABLED=0 GOOS=linux go build -o oauth-client-demo-server ./cmd/oauth-client-demo
+RUN CGO_ENABLED=0 GOOS=linux go build -o webhook-server ./cmd/webhook
+RUN CGO_ENABLED=0 GOOS=linux go build -o admin-service-server ./cmd/admin-service
 
 # ==================== 图书服务 ====================
 FROM alpine:3.19 AS book-service
@@ -75,3 +77,30 @@ COPY --from=builder /app/oauth-client-demo-server .
 EXPOSE 8082
 
 CMD ["./oauth-client-demo-server"]
+
+# ==================== Webhook 服务 ====================
+FROM alpine:3.19 AS webhook
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+COPY --from=builder /app/webhook-server .
+
+EXPOSE 8080
+
+CMD ["./webhook-server"]
+
+# ==================== 管理服务 ====================
+FROM alpine:3.19 AS admin-service
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+COPY --from=builder /app/admin-service-server .
+COPY --from=builder /app/configs/admin-service.yaml ./configs/
+
+EXPOSE 8084
+
+CMD ["./admin-service-server"]

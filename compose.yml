@@ -168,6 +168,23 @@ services:
     depends_on:
       - kratos
 
+  # ==================== Webhook 服务 ====================
+
+  # 注册后 Webhook 服务 - 自动将用户添加到 Keto users 组
+  webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: webhook
+    container_name: bookstore-webhook
+    ports:
+      - "8083:8080"
+    environment:
+      - KETO_WRITE_URL=http://keto:4467
+      - WEBHOOK_PORT=8080
+    depends_on:
+      - keto
+
   # ==================== Ory Keto 权限控制服务 ====================
 
   # Keto PostgreSQL（独立数据库）
@@ -440,6 +457,40 @@ services:
       tempo:
         condition: service_started
       book-service:
+        condition: service_started
+      oathkeeper:
+        condition: service_started
+
+  # ==================== 管理服务 ====================
+
+  # 管理服务 (HTTP :8084) - 订单状态管理等后台操作
+  admin-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: admin-service
+    container_name: bookstore-admin-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.rule=PathPrefix(`/api/v1/admin/orders`)"
+      - "traefik.http.routers.admin.entrypoints=web"
+      - "traefik.http.services.admin.loadbalancer.server.port=8084"
+      # ForwardAuth 中间件：转发到 Oathkeeper 验证认证
+      - "traefik.http.middlewares.oathkeeper-admin.forwardauth.address=http://oathkeeper:4455/decisions"
+      - "traefik.http.middlewares.oathkeeper-admin.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.oathkeeper-admin.forwardauth.authResponseHeaders=Authorization"
+      # 应用中间件链
+      - "traefik.http.routers.admin.middlewares=oathkeeper-admin"
+    environment:
+      - GIN_MODE=debug
+    depends_on:
+      postgres-order:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+      tempo:
         condition: service_started
       oathkeeper:
         condition: service_started
